@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
 const path = require('path');
+const fs = require('fs');
 
 const PORT = process.env.PORT || 3000;
 const TEACHER_CODE = process.env.TEACHER_CODE || '';
@@ -47,13 +48,22 @@ const app = express();
 app.use(express.json({ limit: '50kb' }));
 app.use(cookieParser());
 
-// Раздача статики (HTML, CSS, JS) из корня и папки public
+// Отдача статических файлов
 app.use(express.static(__dirname));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Главный маршрут для открытия сайта
+// Универсальный маршрут главной страницы
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  const rootIndex = path.join(__dirname, 'index.html');
+  const publicIndex = path.join(__dirname, 'public', 'index.html');
+
+  if (fs.existsSync(rootIndex)) {
+    return res.sendFile(rootIndex);
+  } else if (fs.existsSync(publicIndex)) {
+    return res.sendFile(publicIndex);
+  } else {
+    res.status(404).send('Ошибка: файл index.html не найден в репозитории!');
+  }
 });
 
 // ---------- helpers ----------
