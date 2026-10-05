@@ -46,7 +46,15 @@ create table if not exists settings(key text primary key, value text not null);
 const app = express();
 app.use(express.json({ limit: '50kb' }));
 app.use(cookieParser());
+
+// Раздача статики (HTML, CSS, JS) из корня и папки public
+app.use(express.static(__dirname));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Главный маршрут для открытия сайта
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // ---------- helpers ----------
 const fails = new Map(); // ip -> {n, t}
@@ -93,7 +101,6 @@ const ABC = 'abcdefghjkmnpqrstuvwxyz23456789';
 const makePass = () => Array.from({ length: 8 }, () => ABC[crypto.randomInt(ABC.length)]).join('');
 
 // ---------- auth ----------
-// Регистрация открыта только для учителей (нужен код из .env). Учеников создаёт учитель.
 app.post('/api/register', limited, (req, res) => {
   const b = req.body || {};
   const login = str(b.login, 30).toLowerCase();
@@ -242,4 +249,4 @@ app.put('/api/settings', needAuth, needTeacher, (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, () => console.log(`ЕНТ-трекер: http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`ЕНТ-трекер запущен на порту ${PORT}`));
