@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F8FAFC">
+<title>ЕНТ-трекер</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header class="top">
+    <div><h1>ЕНТ-трекер</h1><p class="sub" id="sub">Пробные тесты по вторникам и пятницам</p></div>
+    <div class="row" id="who" hidden><span id="whoName" class="mute"></span><button id="out">Выйти</button></div>
+  </header>
+
+  <section id="auth" hidden>
+    <div class="card narrow">
+      <div class="tabs"><button id="tLogin" class="on">Вход</button><button id="tReg">Первая настройка (учитель)</button></div>
+      <form id="fLogin">
+        <p class="legend">Логин и пароль выдаёт школа.</p>
+        <label>Логин<input name="login" autocomplete="username" required></label>
+        <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="pri wide">Войти</button>
+      </form>
+      <form id="fReg" hidden>
+        <p class="legend">Аккаунт учителя создаётся по секретному коду из файла .env. Учеников потом добавляете вы сами.</p>
+        <label>Фамилия и имя<input name="name" autocomplete="name" required></label>
+        <label>Логин (латиница)<input name="login" autocomplete="username" required></label>
+        <label>Пароль (от 6 символов)<input name="password" type="password" autocomplete="new-password" required></label>
+        <label>Код учителя<input name="teacherCode" required></label>
+        <button class="pri wide">Создать аккаунт учителя</button>
+      </form>
+      <p class="err" id="aErr" role="alert"></p>
+    </div>
+  </section>
+
+  <!-- ученик -->
+  <section id="stu" hidden><div class="card" id="stuBody"></div></section>
+
+  <!-- учитель -->
+  <section id="tea" hidden>
+    <div class="tabs"><button id="pS" class="on">Ученики</button><button id="pT">Тесты и баллы</button></div>
+
+    <div id="paneS">
+      <div class="stats" id="stats"></div>
+      <div class="bar">
+        <input class="grow" id="q" type="search" placeholder="Поиск по фамилии" aria-label="Поиск по фамилии">
+        <button class="pri" id="aOpen">Добавить учеников</button>
+        <select id="fc" aria-label="Класс"></select>
+        <select id="fs" aria-label="Сортировка">
+          <option value="risk">Сначала в зоне риска</option>
+          <option value="miss">Сначала с пропусками</option>
+          <option value="name">По фамилии</option>
+          <option value="top">Сначала высокие баллы</option>
+        </select>
+      </div>
+      <div class="tw"><table>
+        <thead><tr><th>Ученик</th><th>Класс</th><th>Последний балл</th><th>Динамика</th><th>Цель</th><th>Пропуски</th><th>Статус</th></tr></thead>
+        <tbody id="rows"></tbody></table>
+        <div class="empty" id="empty" hidden></div></div>
+      <div class="row" style="margin-top:16px">
+        <button id="exp">Скачать таблицу (CSV)</button>
+        <button id="thr">Порог: <span id="thv"></span></button>
+      </div>
+    </div>
+
+    <div id="paneT" hidden>
+      <div class="card">
+        <h3 style="margin-top:0">Дни тестов</h3>
+        <div class="row end">
+          <label>С<input id="gFrom" type="date"></label>
+          <label>По<input id="gTo" type="date"></label>
+          <button id="gMake">Создать все вторники и пятницы</button>
+        </div>
+        <div class="row end" style="margin-top:8px">
+          <label>Или один день<input id="gOne" type="date"></label>
+          <button id="gAdd">Добавить день</button>
+        </div>
+        <p class="err" id="gErr" role="alert"></p>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3 style="margin-top:0">Ввод баллов</h3>
+        <div class="bar">
+          <select id="sSel" aria-label="День теста"></select>
+          <select id="sCls" aria-label="Класс"></select>
+          <button id="sDel" class="danger">Удалить день</button>
+        </div>
+        <p class="legend">Оставьте поля пустыми, если ученик не писал тест. Тогда это будет считаться пропуском. Максимум: история 20, матем. грамотность 10, грамотность чтения 10, профильные по 50.</p>
+        <div class="tw"><table class="grid">
+          <thead><tr><th>Ученик</th><th>Ист.<br>20</th><th>МГ<br>10</th><th>ГЧ<br>10</th><th>П1<br>50</th><th>П2<br>50</th><th>Итого</th></tr></thead>
+          <tbody id="gRows"></tbody></table>
+          <div class="empty" id="gEmpty" hidden></div></div>
+        <div class="row" style="margin-top:16px"><button class="pri" id="gSave">Сохранить баллы</button><span id="gMsg" role="status"></span></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dAdd">
+  <div class="dh"><h2>Добавить учеников</h2><button id="aClose" aria-label="Закрыть">✕</button></div>
+  <div class="db">
+    <div id="aForm">
+      <p class="legend">Одна строка — один ученик: <b>Фамилия Имя; Класс; Профиль 1; Профиль 2</b>. Список можно вставить прямо из Excel. Логины и пароли создаются автоматически.</p>
+      <textarea id="aText" rows="9" placeholder="Иванов Алихан; 11А; Математика; Физика&#10;Серікова Айым; 11А; Биология; Химия"></textarea>
+      <label>Целевой балл для всех<input id="aTarget" type="number" min="0" max="140" value="100"></label>
+      <div class="row" style="margin-top:16px"><button class="pri" id="aGo">Создать аккаунты</button><span class="err" id="aErr2" role="alert"></span></div>
+    </div>
+    <div id="aRes" hidden>
+      <p><b>Аккаунты созданы.</b> Пароли показываются только сейчас: скачайте таблицу и раздайте ученикам.</p>
+      <div class="tw"><table class="hist"><thead><tr><th>Ученик</th><th>Класс</th><th>Логин</th><th>Пароль</th></tr></thead><tbody id="aTbl"></tbody></table></div>
+      <div class="row" style="margin-top:16px"><button class="pri" id="aCsv">Скачать логины и пароли (CSV)</button><button id="aMore">Добавить ещё</button></div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dSt">
+  <div class="dh"><h2 id="dName"></h2><button id="dClose" aria-label="Закрыть">✕</button></div>
+  <div class="db" id="dBody"></div>
+</dialog>
+<script src="app.js"></script>
+</body>
+</html>
