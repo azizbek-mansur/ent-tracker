@@ -2,7 +2,6 @@
   var $ = function (id) { return document.getElementById(id); };
   var D = null, openId = null, selSess = null, shown = [];
   var WD = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
-  var LBL = { h: 'История', m: 'Математическая грамотность', r: 'Грамотность чтения', a: 'Профильный предмет 1', b: 'Профильный предмет 2' };
 
   function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -132,6 +131,9 @@
     var c = calc(s), st = status(s);
     var creative = isCreative(s);
     var maxVal = creative ? 40 : 140;
+    var nameP1 = esc(s.p1 || 'Профиль 1');
+    var nameP2 = esc(s.p2 || 'Профиль 2');
+    
     $('dName').textContent = s.name;
     var d = c.prev === null ? '' : c.last - c.prev;
     var dTxt = d === '' ? '' : ' <span class="' + (d > 0 ? 'ok' : d < 0 ? 'bad' : 'mute') + '" style="font-size:14px">' + (d > 0 ? '+' : '') + d + '</span>';
@@ -150,7 +152,7 @@
       '<div class="meter" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pct + '%"></i></div>' +
       chart(c, s.target, maxVal) +
       '<div class="legend">Красный × на графике — пропущенный тест.</div>' +
-      '<h3>Все тесты</h3><div class="tw"><table class="hist"><thead><tr><th>День</th><th>Ист.</th><th>МГ</th><th>ГЧ</th>' + (creative ? '' : '<th>П1</th><th>П2</th>') + '<th>Итого</th></tr></thead><tbody>' +
+      '<h3>Все тесты</h3><div class="tw"><table class="hist"><thead><tr><th>День</th><th>Ист.</th><th>МГ</th><th>ГЧ</th>' + (creative ? '' : '<th>' + nameP1 + '</th><th>' + nameP2 + '</th>') + '<th>Итого</th></tr></thead><tbody>' +
       (c.rows.slice().reverse().map(function (x) {
         if (x.st === 'done') return '<tr><td>' + fmt(x.d) + '</td><td>' + x.r.h + '</td><td>' + x.r.m + '</td><td>' + x.r.r + '</td>' + (creative ? '' : '<td>' + x.r.a + '</td><td>' + x.r.b + '</td>') + '<td><b>' + tot(x.r) + '</b></td></tr>';
         return '<tr><td>' + fmt(x.d) + '</td><td colspan="' + (creative ? 4 : 6) + '" class="' + (x.st === 'miss' ? 'skip' : 'soon') + '">' + (x.st === 'miss' ? 'Пропуск' : 'Впереди') + '</td></tr>';
@@ -161,8 +163,8 @@
       '<h3>Данные ученика</h3><div class="fg">' +
       '<label>Фамилия и имя<input name="name" value="' + esc(s.name) + '"></label>' +
       '<label>Класс<input name="cls" value="' + esc(s.cls) + '"></label>' +
-      '<label>Профиль 1 (или Творческий)<input name="p1" value="' + esc(s.p1) + '"></label>' +
-      '<label>Профиль 2<input name="p2" value="' + esc(s.p2) + '"></label></div>' +
+      '<label>Профиль 1 (название предмета)<input name="p1" value="' + esc(s.p1) + '"></label>' +
+      '<label>Профиль 2 (название предмета)<input name="p2" value="' + esc(s.p2) + '"></label></div>' +
       '<div class="row" style="margin-top:16px"><button data-act="target">Изменить цель</button><button data-act="edit">Сохранить данные</button><button data-act="pass">Сбросить пароль</button><button class="danger" data-act="del">Удалить ученика</button></div><p class="legend" data-pass role="status" style="margin-top:16px"></p>';
     el.innerHTML = html;
 
@@ -279,11 +281,14 @@
     if ($('gRows')) $('gRows').innerHTML = selSess === null ? '' : list.map(function (s) {
       var r = s.results.filter(function (x) { return x.session_id === selSess; })[0];
       var creative = isCreative(s);
-      function inp(k, mx, dis) {
-        if (dis) return '<td><input type="text" value="—" disabled style="background:#eee; text-align:center; color:#999;"></td>';
-        return '<td><input type="number" min="0" max="' + mx + '" data-k="' + k + '" aria-label="' + LBL[k] + ', ' + esc(s.name) + '" value="' + (r ? r[k] : '') + '"></td>';
+      var p1Title = esc(s.p1 || 'Профиль 1');
+      var p2Title = esc(s.p2 || 'Профиль 2');
+
+      function inp(k, mx, dis, title) {
+        if (dis) return '<td><input type="text" value="—" disabled title="Творческое направление" style="background:#eee; text-align:center; color:#999;"></td>';
+        return '<td><input type="number" min="0" max="' + mx + '" data-k="' + k + '" aria-label="' + title + ', ' + esc(s.name) + '" placeholder="' + title + '" value="' + (r ? r[k] : '') + '"></td>';
       }
-      return '<tr data-sid="' + s.id + '"><td class="nm">' + esc(s.name) + (creative ? ' 🎨' : '') + ' <span class="mute">' + esc(s.cls) + '</span></td>' + inp('h', 20, false) + inp('m', 10, false) + inp('r', 10, false) + inp('a', 50, creative) + inp('b', 50, creative) + '<td class="tt"><b>' + (r ? tot(r) : '') + '</b></td></tr>';
+      return '<tr data-sid="' + s.id + '"><td class="nm">' + esc(s.name) + (creative ? ' 🎨' : '') + ' <small class="mute" style="display:block; font-size:11px;">' + esc(s.cls) + ' | ' + (creative ? 'Творческий' : (p1Title + ', ' + p2Title)) + '</small></td>' + inp('h', 20, false, 'История') + inp('m', 10, false, 'Мат. грамотность') + inp('r', 10, false, 'Грамотность чтения') + inp('a', 50, creative, p1Title) + inp('b', 50, creative, p2Title) + '<td class="tt"><b>' + (r ? tot(r) : '') + '</b></td></tr>';
     }).join('');
     if ($('gEmpty')) {
       $('gEmpty').hidden = selSess !== null && list.length > 0;
