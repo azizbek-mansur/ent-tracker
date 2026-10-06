@@ -9,7 +9,13 @@
   function today() { var t = new Date(); return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()); }
   function short(d) { return d.slice(8, 10) + '.' + d.slice(5, 7); }
   function fmt(d) { return WD[new Date(d + 'T00:00:00').getDay()] + ' ' + short(d); }
-  function tot(r) { return r.h + r.m + r.r + r.a + r.b; }
+  function tot(r) { return (r.h || 0) + (r.m || 0) + (r.r || 0) + (r.a || 0) + (r.b || 0); }
+  
+  function isCreative(s) {
+    var p1 = String(s.p1 || '').toLowerCase();
+    var p2 = String(s.p2 || '').toLowerCase();
+    return p1.indexOf('творч') > -1 || p2.indexOf('творч') > -1;
+  }
 
   // ---------- подсчёт по ученику ----------
   function calc(s) {
@@ -33,9 +39,11 @@
   }
   function status(s) {
     var c = calc(s);
+    var creative = isCreative(s);
+    var thr = creative ? Math.min(D.threshold, 25) : D.threshold;
     if (c.last === null) return { t: 'Нет результатов', c: 'mute', k: 1 };
     if (c.last >= s.target) return { t: 'Цель достигнута', c: 'ok', k: 3 };
-    if (c.last >= D.threshold) return { t: 'Выше порога', c: 'warn', k: 2 };
+    if (c.last >= thr) return { t: 'Выше порога', c: 'warn', k: 2 };
     return { t: 'Зона риска', c: 'bad', k: 0 };
   }
 
@@ -90,18 +98,18 @@
   if ($('mInput')) $('mInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('mYes').click(); } });
 
   // ---------- график ----------
-  function chart(c, target) {
+  function chart(c, target, maxVal) {
+    maxVal = maxVal || 140;
     var list = c.rows.filter(function (x) { return x.st !== 'soon'; }).slice(-20);
     var W = 400, H = 180, L = 30, B = 30, T = 10, R = 10, g = '';
-    function Y(v) { return H - B - v / 140 * (H - B - T); }
-    [0, 50, 100, 140].forEach(function (v) {
+    function Y(v) { return H - B - v / maxVal * (H - B - T); }
+    var gridVals = maxVal === 40 ? [0, 15, 30, 40] : [0, 50, 100, 140];
+    gridVals.forEach(function (v) {
       g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)"/><text x="' + (L - 4) + '" y="' + (Y(v) + 4) + '" text-anchor="end" font-size="10" fill="var(--mute)">' + v + '</text>';
     });
-    g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(D.threshold) + '" y2="' + Y(D.threshold) + '" stroke="var(--mute)" stroke-dasharray="4 3"/>';
     g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(target) + '" y2="' + Y(target) + '" stroke="var(--pri)" stroke-dasharray="4 3"/>';
-    var tUp = target >= D.threshold;
     function tag(v, t, col, up) { return '<text x="' + (W - R - 2) + '" y="' + (Y(v) + (up ? -4 : 12)) + '" text-anchor="end" font-size="10" font-weight="700" fill="' + col + '" stroke="var(--gs)" stroke-width="3" paint-order="stroke">' + t + ' ' + v + '</text>'; }
-    g += tag(D.threshold, 'порог', 'var(--mute)', !tUp) + tag(target, 'цель', 'var(--pri)', tUp);
+    g += tag(target, 'цель', 'var(--pri)', true);
     if (!list.length) return '<svg class="ch" viewBox="0 0 400 180" role="img" aria-label="График баллов">' + g + '<text x="200" y="90" text-anchor="middle" fill="var(--mute)" font-size="13">Тестов пока не было</text></svg>';
     var step = list.length < 2 ? 0 : (W - L - R) / (list.length - 1), pts = [], marks = '';
     list.forEach(function (x, i) {
@@ -122,6 +130,8 @@
   // ---------- карточка прогресса (ученик и учитель) ----------
   function mount(el, s, teacher) {
     var c = calc(s), st = status(s);
+    var creative = isCreative(s);
+    var maxVal = creative ? 40 : 140;
     $('dName').textContent = s.name;
     var d = c.prev === null ? '' : c.last - c.prev;
     var dTxt = d === '' ? '' : ' <span class="' + (d > 0 ? 'ok' : d < 0 ? 'bad' : 'mute') + '" style="font-size:14px">' + (d > 0 ? '+' : '') + d + '</span>';
@@ -129,29 +139,29 @@
     var left = c.last === null ? null : s.target - c.last;
     var att = c.held ? Math.round(c.done / c.held * 100) : null;
     var html =
-      '<div class="legend">' + esc(s.cls) + ' класс · Логин: <b>' + esc(s.login) + '</b> · ' + esc([s.p1, s.p2].filter(Boolean).join(', ') || 'профильные предметы не указаны') + ' · <b class="' + st.c + '">' + st.t + '</b></div>' +
+      '<div class="legend">' + esc(s.cls) + ' класс · Логин: <b>' + esc(s.login) + '</b> · ' + esc([s.p1, s.p2].filter(Boolean).join(', ') || 'профильные предметы не указаны') + (creative ? ' 🎨 <b>(Творческое направление)</b>' : '') + ' · <b class="' + st.c + '">' + st.t + '</b></div>' +
       '<div class="big">' +
-      '<div><b>' + (c.last === null ? '—' : c.last) + dTxt + '</b><span>последний балл из 140</span></div>' +
+      '<div><b>' + (c.last === null ? '—' : c.last) + dTxt + '</b><span>последний балл из ' + maxVal + '</span></div>' +
       '<div><b>' + (c.best === null ? '—' : c.best) + '</b><span>лучший балл</span></div>' +
       '<div><b>' + (c.avg === null ? '—' : c.avg) + '</b><span>средний балл</span></div>' +
       '<div><b>' + c.done + ' из ' + c.held + '</b><span>написано тестов' + (att === null ? '' : ' (' + att + '%)') + '</span></div>' +
       '<div><b class="' + (c.missed ? 'skip' : '') + '">' + c.missed + '</b><span>пропущено</span></div></div>' +
-      '<div class="legend">Цель: ' + s.target + ' баллов · ' + (left === null ? 'результатов пока нет' : left > 0 ? 'осталось набрать ' + left : 'цель достигнута') + '</div>' +
+      '<div class="legend">Цель: ' + s.target + ' баллов из ' + maxVal + ' · ' + (left === null ? 'результатов пока нет' : left > 0 ? 'осталось набрать ' + left : 'цель достигнута') + '</div>' +
       '<div class="meter" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pct + '%"></i></div>' +
-      chart(c, s.target) +
+      chart(c, s.target, maxVal) +
       '<div class="legend">Красный × на графике — пропущенный тест.</div>' +
-      '<h3>Все тесты</h3><div class="tw"><table class="hist"><thead><tr><th>День</th><th>Ист.</th><th>МГ</th><th>ГЧ</th><th>П1</th><th>П2</th><th>Итого</th></tr></thead><tbody>' +
+      '<h3>Все тесты</h3><div class="tw"><table class="hist"><thead><tr><th>День</th><th>Ист.</th><th>МГ</th><th>ГЧ</th>' + (creative ? '' : '<th>П1</th><th>П2</th>') + '<th>Итого</th></tr></thead><tbody>' +
       (c.rows.slice().reverse().map(function (x) {
-        if (x.st === 'done') return '<tr><td>' + fmt(x.d) + '</td><td>' + x.r.h + '</td><td>' + x.r.m + '</td><td>' + x.r.r + '</td><td>' + x.r.a + '</td><td>' + x.r.b + '</td><td><b>' + tot(x.r) + '</b></td></tr>';
-        return '<tr><td>' + fmt(x.d) + '</td><td colspan="6" class="' + (x.st === 'miss' ? 'skip' : 'soon') + '">' + (x.st === 'miss' ? 'Пропуск' : 'Впереди') + '</td></tr>';
-      }).join('') || '<tr><td colspan="7" class="mute">Дни тестов ещё не добавлены</td></tr>') +
+        if (x.st === 'done') return '<tr><td>' + fmt(x.d) + '</td><td>' + x.r.h + '</td><td>' + x.r.m + '</td><td>' + x.r.r + '</td>' + (creative ? '' : '<td>' + x.r.a + '</td><td>' + x.r.b + '</td>') + '<td><b>' + tot(x.r) + '</b></td></tr>';
+        return '<tr><td>' + fmt(x.d) + '</td><td colspan="' + (creative ? 4 : 6) + '" class="' + (x.st === 'miss' ? 'skip' : 'soon') + '">' + (x.st === 'miss' ? 'Пропуск' : 'Впереди') + '</td></tr>';
+      }).join('') || '<tr><td colspan="' + (creative ? 5 : 7) + '" class="mute">Дни тестов ещё не добавлены</td></tr>') +
       '</tbody></table></div>' +
       '<span class="err" data-err role="alert"></span>';
     if (teacher) html +=
       '<h3>Данные ученика</h3><div class="fg">' +
       '<label>Фамилия и имя<input name="name" value="' + esc(s.name) + '"></label>' +
       '<label>Класс<input name="cls" value="' + esc(s.cls) + '"></label>' +
-      '<label>Профиль 1<input name="p1" value="' + esc(s.p1) + '"></label>' +
+      '<label>Профиль 1 (или Творческий)<input name="p1" value="' + esc(s.p1) + '"></label>' +
       '<label>Профиль 2<input name="p2" value="' + esc(s.p2) + '"></label></div>' +
       '<div class="row" style="margin-top:16px"><button data-act="target">Изменить цель</button><button data-act="edit">Сохранить данные</button><button data-act="pass">Сбросить пароль</button><button class="danger" data-act="del">Удалить ученика</button></div><p class="legend" data-pass role="status" style="margin-top:16px"></p>';
     el.innerHTML = html;
@@ -162,7 +172,7 @@
       var f = function (n) { return el.querySelector('[name=' + n + ']').value; };
       try {
         if (b.dataset.act === 'target') {
-          var v = await ask({ title: 'Целевой балл', text: 'Сколько баллов на ЕНТ ученик хочет набрать (0–140)?', input: { value: s.target, min: 0, max: 140 }, ok: 'Сохранить' }); if (v === null) return;
+          var v = await ask({ title: 'Целевой балл', text: 'Сколько баллов ученик хочет набрать (' + (creative ? '0–40' : '0–140') + ')?', input: { value: s.target, min: 0, max: creative ? 40 : 140 }, ok: 'Сохранить' }); if (v === null) return;
           await api('PATCH', '/api/students/' + s.id, { target: v });
         } else if (b.dataset.act === 'edit') {
           await api('PATCH', '/api/students/' + s.id, { name: f('name'), cls: f('cls'), p1: f('p1'), p2: f('p2') });
@@ -222,8 +232,10 @@
       .map(function (x) { return '<div class="stat"><b>' + x[0] + '</b><span>' + x[1] + '</span></div>'; }).join('');
     if ($('rows')) $('rows').innerHTML = list.map(function (s) {
       var st = status(s), c = C[s.id], d = c.prev === null ? null : c.last - c.prev;
+      var creative = isCreative(s);
+      var maxVal = creative ? 40 : 140;
       var dt = d === null ? '<span class="mute">—</span>' : '<span class="' + (d > 0 ? 'ok' : d < 0 ? 'bad' : 'mute') + '">' + (d > 0 ? '+' : '') + d + '</span>';
-      return '<tr tabindex="0" data-id="' + s.id + '"><td>' + esc(s.name) + '</td><td>' + esc(s.cls) + '</td><td>' + esc(s.login || '—') + '</td><td>' + (c.last === null ? '—' : c.last) + '</td><td>' + dt + '</td><td>' + s.target + '</td><td class="' + (c.missed ? 'skip' : '') + '">' + c.missed + ' из ' + c.held + '</td><td><span class="pill ' + st.c + '">' + st.t + '</span></td></tr>';
+      return '<tr tabindex="0" data-id="' + s.id + '"><td>' + esc(s.name) + (creative ? ' 🎨' : '') + '</td><td>' + esc(s.cls) + '</td><td>' + esc(s.login || '—') + '</td><td>' + (c.last === null ? '—' : c.last) + '<span class="mute">/' + maxVal + '</span></td><td>' + dt + '</td><td>' + s.target + '</td><td class="' + (c.missed ? 'skip' : '') + '">' + c.missed + ' из ' + c.held + '</td><td><span class="pill ' + st.c + '">' + st.t + '</span></td></tr>';
     }).join('');
     if ($('empty')) {
       $('empty').hidden = list.length > 0;
@@ -259,8 +271,12 @@
     if ($('gMsg')) { $('gMsg').textContent = ''; $('gMsg').className = ''; }
     if ($('gRows')) $('gRows').innerHTML = selSess === null ? '' : list.map(function (s) {
       var r = s.results.filter(function (x) { return x.session_id === selSess; })[0];
-      function inp(k, mx) { return '<td><input type="number" min="0" max="' + mx + '" data-k="' + k + '" aria-label="' + LBL[k] + ', ' + esc(s.name) + '" value="' + (r ? r[k] : '') + '"></td>'; }
-      return '<tr data-sid="' + s.id + '"><td class="nm">' + esc(s.name) + ' <span class="mute">' + esc(s.cls) + '</span></td>' + inp('h', 20) + inp('m', 10) + inp('r', 10) + inp('a', 50) + inp('b', 50) + '<td class="tt"><b>' + (r ? tot(r) : '') + '</b></td></tr>';
+      var creative = isCreative(s);
+      function inp(k, mx, dis) {
+        if (dis) return '<td><input type="text" value="—" disabled style="background:#eee; text-align:center; color:#999;"></td>';
+        return '<td><input type="number" min="0" max="' + mx + '" data-k="' + k + '" aria-label="' + LBL[k] + ', ' + esc(s.name) + '" value="' + (r ? r[k] : '') + '"></td>';
+      }
+      return '<tr data-sid="' + s.id + '"><td class="nm">' + esc(s.name) + (creative ? ' 🎨' : '') + ' <span class="mute">' + esc(s.cls) + '</span></td>' + inp('h', 20, false) + inp('m', 10, false) + inp('r', 10, false) + inp('a', 50, creative) + inp('b', 50, creative) + '<td class="tt"><b>' + (r ? tot(r) : '') + '</b></td></tr>';
     }).join('');
     if ($('gEmpty')) {
       $('gEmpty').hidden = selSess !== null && list.length > 0;
@@ -273,7 +289,7 @@
       var tr = e.target.closest('tr'); if (!tr) return;
       var ci = e.target;
       if (ci.dataset && ci.dataset.k) { var bad = ci.value !== '' && (Number(ci.value) > Number(ci.max) || Number(ci.value) < 0); ci.classList.toggle('over', bad); ci.setAttribute('aria-invalid', bad ? 'true' : 'false'); }
-      var vals = Array.prototype.map.call(tr.querySelectorAll('input'), function (i) { return i.value; });
+      var vals = Array.prototype.map.call(tr.querySelectorAll('input:not([disabled])'), function (i) { return i.value; });
       tr.querySelector('.tt').innerHTML = '<b>' + (vals.every(function (v) { return v === ''; }) ? '' : vals.reduce(function (a, v) { return a + (+v || 0); }, 0)) + '</b>';
     });
     $('gRows').addEventListener('keydown', function (e) {
@@ -285,7 +301,7 @@
       if (!dir) return;
       e.preventDefault();
       var tr = i.closest('tr'), nx = dir > 0 ? tr.nextElementSibling : tr.previousElementSibling;
-      var t = nx && nx.querySelector('input[data-k="' + i.dataset.k + '"]');
+      var t = nx && nx.querySelector('input[data-k="' + i.dataset.k + '"]:not([disabled])');
       if (t) { t.focus(); try { t.select(); } catch (x) {} }
       else if (dir > 0 && $('gSave')) $('gSave').focus();
     });
@@ -298,7 +314,7 @@
     if (over) { $('gMsg').className = 'err'; $('gMsg').textContent = 'Проверьте выделенные поля: балл выше максимума или меньше нуля.'; over.focus(); return; }
     var rows = Array.prototype.map.call($('gRows').querySelectorAll('tr'), function (tr) {
       var o = { studentId: +tr.dataset.sid }, blank = true;
-      tr.querySelectorAll('input').forEach(function (i) { o[i.dataset.k] = i.value === '' ? 0 : Number(i.value); if (i.value !== '') blank = false; });
+      tr.querySelectorAll('input:not([disabled])').forEach(function (i) { o[i.dataset.k] = i.value === '' ? 0 : Number(i.value); if (i.value !== '') blank = false; });
       if (blank) return { studentId: o.studentId, blank: true };
       return o;
     });
@@ -404,7 +420,9 @@
     var rows = $('aText').value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).map(function (l, i) {
       var c = l.split(/\t|;/).map(function (x) { return x.trim(); });
       if (!c[0] || !c[1]) bad = bad || 'Строка ' + (i + 1) + ': нужны фамилия с именем и класс';
-      return { name: c[0], cls: c[1], p1: c[2] || '', p2: c[3] || '', target: target };
+      var isCreativeRow = String(c[2] || '').toLowerCase().indexOf('творч') > -1 || String(c[3] || '').toLowerCase().indexOf('творч') > -1;
+      var rowTarget = isCreativeRow ? Math.min(target, 35) : target;
+      return { name: c[0], cls: c[1], p1: c[2] || '', p2: c[3] || '', target: rowTarget };
     });
     if (bad) { $('aErr2').textContent = bad; return; }
     if (!rows.length) { $('aErr2').textContent = 'Вставьте список учеников'; return; }
