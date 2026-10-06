@@ -50,7 +50,7 @@
     render();
     if (openId && D) {
       var s = D.students.filter(function (x) { return x.id === openId; })[0];
-      if (s) mount($('dBody'), s, true); else $('dSt').close();
+      if (s) mount($('dBody'), s, true); else if ($('dSt')) $('dSt').close();
     }
   }
 
@@ -86,8 +86,8 @@
       if (o.input) { inp.focus(); inp.select(); } else yes.focus();
     });
   }
-  function notice(text, title) { return ask({ title: title || 'Не получилось', text: text, info: true, ok: 'Понятно' }); }
-  $('mInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('mYes').click(); } });
+  function notice(text, title) { return ask({ title: title || 'Информация', text: text, info: true, ok: 'Понятно' }); }
+  if ($('mInput')) $('mInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('mYes').click(); } });
 
   // ---------- график ----------
   function chart(c, target) {
@@ -129,7 +129,7 @@
     var left = c.last === null ? null : s.target - c.last;
     var att = c.held ? Math.round(c.done / c.held * 100) : null;
     var html =
-      '<div class="legend">' + esc(s.cls) + ' класс · логин: <b>' + esc(s.login) + '</b> · ' + esc([s.p1, s.p2].filter(Boolean).join(', ') || 'профильные предметы не указаны') + ' · <b class="' + st.c + '">' + st.t + '</b></div>' +
+      '<div class="legend">' + esc(s.cls) + ' класс · Логин: <b>' + esc(s.login) + '</b> · ' + esc([s.p1, s.p2].filter(Boolean).join(', ') || 'профильные предметы не указаны') + ' · <b class="' + st.c + '">' + st.t + '</b></div>' +
       '<div class="big">' +
       '<div><b>' + (c.last === null ? '—' : c.last) + dTxt + '</b><span>последний балл из 140</span></div>' +
       '<div><b>' + (c.best === null ? '—' : c.best) + '</b><span>лучший балл</span></div>' +
@@ -167,9 +167,11 @@
         } else if (b.dataset.act === 'edit') {
           await api('PATCH', '/api/students/' + s.id, { name: f('name'), cls: f('cls'), p1: f('p1'), p2: f('p2') });
         } else if (b.dataset.act === 'pass') {
-          if (!(await ask({ title: 'Новый пароль', text: 'Создать новый пароль для «' + s.name + '»? Старый перестанет работать.', ok: 'Создать пароль' }))) return;
-          var np = await api('POST', '/api/students/' + s.id + '/newpass');
-          el.querySelector('[data-pass]').innerHTML = 'Логин: <b>' + esc(np.login) + '</b> · новый пароль: <b>' + esc(np.password) + '</b>. Запишите его: повторно он не показывается.'; return;
+          var newPass = prompt('Введите новый пароль для ' + s.name + ' (минимум 6 символов):', 'student123');
+          if (!newPass) return;
+          if (newPass.length < 6) return alert('Пароль должен быть не менее 6 символов');
+          await api('POST', '/api/students/' + s.id + '/password', { password: newPass });
+          el.querySelector('[data-pass]').innerHTML = 'Логин: <b>' + esc(s.login) + '</b> · Новый пароль: <b>' + esc(newPass) + '</b>'; return;
         } else if (b.dataset.act === 'del') {
           if (!(await ask({ title: 'Удалить ученика?', text: '«' + s.name + '» будет удалён вместе со всеми результатами.', ok: 'Удалить', danger: true }))) return;
           await api('DELETE', '/api/students/' + s.id); openId = null; $('dSt').close();
@@ -181,26 +183,28 @@
 
   // ---------- экраны ----------
   function render() {
-    ['auth', 'stu', 'tea'].forEach(function (i) { $(i).hidden = true; });
-    $('who').hidden = !D;
-    if (!D) { $('auth').hidden = false; $('sub').textContent = 'Пробные тесты по вторникам и пятницам'; return; }
-    $('whoName').textContent = D.me.name;
+    ['auth', 'stu', 'tea'].forEach(function (i) { if ($(i)) $(i).hidden = true; });
+    if ($('who')) $('who').hidden = !D;
+    if (!D) { if ($('auth')) $('auth').hidden = false; if ($('sub')) $('sub').textContent = 'Пробные тесты по вторникам и пятницам'; return; }
+    if ($('whoName')) $('whoName').textContent = D.me.name;
     if (D.me.role === 'student') {
-      $('stu').hidden = false; $('sub').textContent = 'Ваш прогресс';
+      if ($('stu')) $('stu').hidden = false; if ($('sub')) $('sub').textContent = 'Ваш прогресс';
       mount($('stuBody'), D.students[0], false);
     } else {
-      $('tea').hidden = false; $('sub').textContent = 'Ученики 10–11 классов';
+      if ($('tea')) $('tea').hidden = false; if ($('sub')) $('sub').textContent = 'Ученики 10–11 классов';
       renderTeacher(); renderSessions();
     }
   }
 
   function renderTeacher() {
-    $('thv').textContent = D.threshold;
+    if ($('thv')) $('thv').textContent = D.threshold;
     var cls = {}; D.students.forEach(function (s) { cls[s.cls] = 1; });
-    var fc = $('fc'), v = fc.value;
-    fc.innerHTML = '<option value="">Все классы</option>' + Object.keys(cls).sort().map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
-    fc.value = cls[v] ? v : '';
-    var q = $('q').value.trim().toLowerCase(), f = fc.value, so = $('fs').value;
+    var fc = $('fc'), v = fc ? fc.value : '';
+    if (fc) {
+      fc.innerHTML = '<option value="">Все классы</option>' + Object.keys(cls).sort().map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
+      fc.value = cls[v] ? v : '';
+    }
+    var q = $('q') ? $('q').value.trim().toLowerCase() : '', f = fc ? fc.value : '', so = $('fs') ? $('fs').value : 'name';
     var list = D.students.filter(function (s) { return (!f || s.cls === f) && (!q || s.name.toLowerCase().indexOf(q) > -1); });
     var C = {}; D.students.forEach(function (s) { C[s.id] = calc(s); });
     list.sort(function (a, b) {
@@ -214,15 +218,17 @@
     var avg = withT.length ? Math.round(withT.reduce(function (a, s) { return a + C[s.id].last; }, 0) / withT.length) : '—';
     var risk = D.students.filter(function (s) { return status(s).k === 0; }).length;
     var dn = 0, hd = 0; D.students.forEach(function (s) { dn += C[s.id].done; hd += C[s.id].held; });
-    $('stats').innerHTML = [[D.students.length, 'учеников'], [avg, 'средний последний балл'], [risk, 'в зоне риска'], [hd ? Math.round(dn / hd * 100) + '%' : '—', 'посещаемость тестов']]
+    if ($('stats')) $('stats').innerHTML = [[D.students.length, 'учеников'], [avg, 'средний последний балл'], [risk, 'в зоне риска'], [hd ? Math.round(dn / hd * 100) + '%' : '—', 'посещаемость тестов']]
       .map(function (x) { return '<div class="stat"><b>' + x[0] + '</b><span>' + x[1] + '</span></div>'; }).join('');
-    $('rows').innerHTML = list.map(function (s) {
+    if ($('rows')) $('rows').innerHTML = list.map(function (s) {
       var st = status(s), c = C[s.id], d = c.prev === null ? null : c.last - c.prev;
       var dt = d === null ? '<span class="mute">—</span>' : '<span class="' + (d > 0 ? 'ok' : d < 0 ? 'bad' : 'mute') + '">' + (d > 0 ? '+' : '') + d + '</span>';
-      return '<tr tabindex="0" data-id="' + s.id + '"><td>' + esc(s.name) + '</td><td>' + esc(s.cls) + '</td><td>' + esc(s.login) + '</td><td>' + (c.last === null ? '—' : c.last) + '</td><td>' + dt + '</td><td>' + s.target + '</td><td class="' + (c.missed ? 'skip' : '') + '">' + c.missed + ' из ' + c.held + '</td><td><span class="pill ' + st.c + '">' + st.t + '</span></td></tr>';
+      return '<tr tabindex="0" data-id="' + s.id + '"><td>' + esc(s.name) + '</td><td>' + esc(s.cls) + '</td><td>' + esc(s.login || '—') + '</td><td>' + (c.last === null ? '—' : c.last) + '</td><td>' + dt + '</td><td>' + s.target + '</td><td class="' + (c.missed ? 'skip' : '') + '">' + c.missed + ' из ' + c.held + '</td><td><span class="pill ' + st.c + '">' + st.t + '</span></td></tr>';
     }).join('');
-    $('empty').hidden = list.length > 0;
-    $('empty').textContent = D.students.length ? 'Никого не найдено. Измените поиск или класс.' : 'Пока нет учеников. Нажмите «Добавить учеников», чтобы создать им аккаунты.';
+    if ($('empty')) {
+      $('empty').hidden = list.length > 0;
+      $('empty').textContent = D.students.length ? 'Никого не найдено. Измените поиск или класс.' : 'Пока нет учеников. Нажмите «Добавить учеников», чтобы создать им аккаунты.';
+    }
   }
 
   // ---------- вкладка «Тесты и баллы» ----------
@@ -232,52 +238,62 @@
       var past = S.filter(function (x) { return x.d <= td; });
       selSess = past.length ? past[past.length - 1].id : (S.length ? S[0].id : null);
     }
-    $('sSel').innerHTML = S.map(function (x) { return '<option value="' + x.id + '">' + fmt(x.d) + '</option>'; }).reverse().join('') || '<option value="">Нет дней тестов</option>';
-    if (selSess !== null) $('sSel').value = selSess;
+    if ($('sSel')) {
+      $('sSel').innerHTML = S.map(function (x) { return '<option value="' + x.id + '">' + fmt(x.d) + '</option>'; }).reverse().join('') || '<option value="">Нет дней тестов</option>';
+      if (selSess !== null) $('sSel').value = selSess;
+    }
     var cls = {}; D.students.forEach(function (s) { cls[s.cls] = 1; });
-    var cv = $('sCls').value;
-    $('sCls').innerHTML = '<option value="">Все классы</option>' + Object.keys(cls).sort().map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
-    $('sCls').value = cls[cv] ? cv : '';
+    var cv = $('sCls') ? $('sCls').value : '';
+    if ($('sCls')) {
+      $('sCls').innerHTML = '<option value="">Все классы</option>' + Object.keys(cls).sort().map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
+      $('sCls').value = cls[cv] ? cv : '';
+    }
     var y = new Date().getFullYear(), m = new Date().getMonth(), y0 = m >= 7 ? y : y - 1;
-    if (!$('gFrom').value) $('gFrom').value = y0 + '-09-01';
-    if (!$('gTo').value) $('gTo').value = (y0 + 1) + '-05-31';
+    if ($('gFrom') && !$('gFrom').value) $('gFrom').value = y0 + '-09-01';
+    if ($('gTo') && !$('gTo').value) $('gTo').value = (y0 + 1) + '-05-31';
     renderGrid();
   }
   function renderGrid() {
-    var f = $('sCls').value, list = D.students.filter(function (s) { return !f || s.cls === f; });
-    $('gSave').disabled = selSess === null;
-    $('gMsg').textContent = ''; $('gMsg').className = '';
-    $('gRows').innerHTML = selSess === null ? '' : list.map(function (s) {
+    var f = $('sCls') ? $('sCls').value : '', list = D.students.filter(function (s) { return !f || s.cls === f; });
+    if ($('gSave')) $('gSave').disabled = selSess === null;
+    if ($('gMsg')) { $('gMsg').textContent = ''; $('gMsg').className = ''; }
+    if ($('gRows')) $('gRows').innerHTML = selSess === null ? '' : list.map(function (s) {
       var r = s.results.filter(function (x) { return x.session_id === selSess; })[0];
       function inp(k, mx) { return '<td><input type="number" min="0" max="' + mx + '" data-k="' + k + '" aria-label="' + LBL[k] + ', ' + esc(s.name) + '" value="' + (r ? r[k] : '') + '"></td>'; }
       return '<tr data-sid="' + s.id + '"><td class="nm">' + esc(s.name) + ' <span class="mute">' + esc(s.cls) + '</span></td>' + inp('h', 20) + inp('m', 10) + inp('r', 10) + inp('a', 50) + inp('b', 50) + '<td class="tt"><b>' + (r ? tot(r) : '') + '</b></td></tr>';
     }).join('');
-    $('gEmpty').hidden = selSess !== null && list.length > 0;
-    $('gEmpty').textContent = selSess === null ? 'Сначала создайте дни тестов выше.' : 'В этом классе пока нет учеников.';
+    if ($('gEmpty')) {
+      $('gEmpty').hidden = selSess !== null && list.length > 0;
+      $('gEmpty').textContent = selSess === null ? 'Сначала создайте дни тестов выше.' : 'В этом классе пока нет учеников.';
+    }
   }
-  $('gRows').addEventListener('input', function (e) {
-    var tr = e.target.closest('tr'); if (!tr) return;
-    var ci = e.target;
-    if (ci.dataset && ci.dataset.k) { var bad = ci.value !== '' && (Number(ci.value) > Number(ci.max) || Number(ci.value) < 0); ci.classList.toggle('over', bad); ci.setAttribute('aria-invalid', bad ? 'true' : 'false'); }
-    var vals = Array.prototype.map.call(tr.querySelectorAll('input'), function (i) { return i.value; });
-    tr.querySelector('.tt').innerHTML = '<b>' + (vals.every(function (v) { return v === ''; }) ? '' : vals.reduce(function (a, v) { return a + (+v || 0); }, 0)) + '</b>';
-  });
-  $('gRows').addEventListener('keydown', function (e) {
-    var i = e.target;
-    if (!i.matches || !i.matches('input[data-k]')) return;
-    var dir = 0;
-    if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) dir = 1;
-    else if (e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)) dir = -1;
-    if (!dir) return;
-    e.preventDefault();
-    var tr = i.closest('tr'), nx = dir > 0 ? tr.nextElementSibling : tr.previousElementSibling;
-    var t = nx && nx.querySelector('input[data-k="' + i.dataset.k + '"]');
-    if (t) { t.focus(); try { t.select(); } catch (x) {} }
-    else if (dir > 0) $('gSave').focus();
-  });
-  $('sSel').onchange = function () { selSess = +this.value; renderGrid(); };
-  $('sCls').onchange = renderGrid;
-  $('gSave').onclick = async function () {
+
+  if ($('gRows')) {
+    $('gRows').addEventListener('input', function (e) {
+      var tr = e.target.closest('tr'); if (!tr) return;
+      var ci = e.target;
+      if (ci.dataset && ci.dataset.k) { var bad = ci.value !== '' && (Number(ci.value) > Number(ci.max) || Number(ci.value) < 0); ci.classList.toggle('over', bad); ci.setAttribute('aria-invalid', bad ? 'true' : 'false'); }
+      var vals = Array.prototype.map.call(tr.querySelectorAll('input'), function (i) { return i.value; });
+      tr.querySelector('.tt').innerHTML = '<b>' + (vals.every(function (v) { return v === ''; }) ? '' : vals.reduce(function (a, v) { return a + (+v || 0); }, 0)) + '</b>';
+    });
+    $('gRows').addEventListener('keydown', function (e) {
+      var i = e.target;
+      if (!i.matches || !i.matches('input[data-k]')) return;
+      var dir = 0;
+      if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) dir = 1;
+      else if (e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)) dir = -1;
+      if (!dir) return;
+      e.preventDefault();
+      var tr = i.closest('tr'), nx = dir > 0 ? tr.nextElementSibling : tr.previousElementSibling;
+      var t = nx && nx.querySelector('input[data-k="' + i.dataset.k + '"]');
+      if (t) { t.focus(); try { t.select(); } catch (x) {} }
+      else if (dir > 0 && $('gSave')) $('gSave').focus();
+    });
+  }
+
+  if ($('sSel')) $('sSel').onchange = function () { selSess = +this.value; renderGrid(); };
+  if ($('sCls')) $('sCls').onchange = renderGrid;
+  if ($('gSave')) $('gSave').onclick = async function () {
     var over = $('gRows').querySelector('input.over');
     if (over) { $('gMsg').className = 'err'; $('gMsg').textContent = 'Проверьте выделенные поля: балл выше максимума или меньше нуля.'; over.focus(); return; }
     var rows = Array.prototype.map.call($('gRows').querySelectorAll('tr'), function (tr) {
@@ -291,63 +307,99 @@
       await reload(); $('gMsg').className = 'ok'; $('gMsg').textContent = 'Сохранено: ' + r.saved;
     } catch (e) { $('gMsg').className = 'err'; $('gMsg').textContent = e.message; }
   };
-  $('sDel').onclick = async function () {
+  if ($('sDel')) $('sDel').onclick = async function () {
     if (selSess === null) return;
     if (!(await ask({ title: 'Удалить день?', text: 'Вместе с днём удалятся все баллы за него.', ok: 'Удалить', danger: true }))) return;
     try { await api('DELETE', '/api/sessions/' + selSess); selSess = null; await reload(); } catch (e) { notice(e.message); }
   };
-  $('gMake').onclick = async function () {
+  if ($('gMake')) $('gMake').onclick = async function () {
     try { var r = await api('POST', '/api/sessions', { from: $('gFrom').value, to: $('gTo').value }); $('gErr').textContent = ''; await reload(); await notice('Добавлено дней: ' + r.added, 'Готово'); }
     catch (e) { $('gErr').textContent = e.message; }
   };
-  $('gAdd').onclick = async function () {
+  if ($('gAdd')) $('gAdd').onclick = async function () {
     try { await api('POST', '/api/sessions', { d: $('gOne').value }); $('gErr').textContent = ''; await reload(); }
     catch (e) { $('gErr').textContent = e.message; }
   };
-  $('pS').onclick = function () { pane(false); };
-  $('pT').onclick = function () { pane(true); };
+  if ($('pS')) $('pS').onclick = function () { pane(false); };
+  if ($('pT')) $('pT').onclick = function () { pane(true); };
   function pane(t) {
-    $('paneS').hidden = t; $('paneT').hidden = !t;
-    $('pS').classList.toggle('on', !t); $('pT').classList.toggle('on', t);
+    if ($('paneS')) $('paneS').hidden = t; if ($('paneT')) $('paneT').hidden = !t;
+    if ($('pS')) $('pS').classList.toggle('on', !t); if ($('pT')) $('pT').classList.toggle('on', t);
   }
 
   function openStudent(id) {
     var s = D.students.filter(function (x) { return x.id === id; })[0]; if (!s) return;
-    openId = id; mount($('dBody'), s, true); $('dSt').showModal();
+    openId = id; mount($('dBody'), s, true); if ($('dSt')) $('dSt').showModal();
   }
-  $('rows').addEventListener('click', function (e) { var r = e.target.closest('tr[data-id]'); if (r) openStudent(+r.dataset.id); });
-  $('rows').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var r = e.target.closest('tr[data-id]'); if (r) openStudent(+r.dataset.id); } });
-  $('dClose').onclick = function () { $('dSt').close(); };
-  $('dSt').addEventListener('close', function () { openId = null; });
-  ['q', 'fc', 'fs'].forEach(function (i) { $(i).addEventListener('input', renderTeacher); });
+  if ($('rows')) {
+    $('rows').addEventListener('click', function (e) { var r = e.target.closest('tr[data-id]'); if (r) openStudent(+r.dataset.id); });
+    $('rows').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var r = e.target.closest('tr[data-id]'); if (r) openStudent(+r.dataset.id); } });
+  }
+  if ($('dClose')) $('dClose').onclick = function () { if ($('dSt')) $('dSt').close(); };
+  if ($('dSt')) $('dSt').addEventListener('close', function () { openId = null; });
+  ['q', 'fc', 'fs'].forEach(function (i) { if ($(i)) $(i).addEventListener('input', renderTeacher); });
 
-  $('thr').onclick = async function () {
+  if ($('thr')) $('thr').onclick = async function () {
     var v = await ask({ title: 'Порог ЕНТ', text: 'Ученики с баллом ниже порога попадают в зону риска (0–140).', input: { value: D.threshold, min: 0, max: 140 }, ok: 'Сохранить' }); if (v === null) return;
     try { await api('PUT', '/api/settings', { threshold: v }); await reload(); } catch (e) { notice(e.message); }
   };
-  $('npw').onclick = async function () {
-    if (!shown.length) { await notice('В списке нет учеников.', 'Список пуст'); return; }
-    if (!(await ask({ title: 'Новые пароли', text: 'Создать новые пароли для учеников в списке (' + shown.length + ')? Старые пароли перестанут работать.', ok: 'Создать пароли', danger: true }))) return;
-    try {
-      var r = await api('POST', '/api/students/newpass-bulk', { ids: shown });
-      var rows = [['Ученик', 'Класс', 'Логин', 'Пароль']].concat(r.created.map(function (x) { return [x.name, x.cls, x.login, x.password]; }));
-      var csv = '\ufeff' + rows.map(function (q) { return q.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
-      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'ent-logins.csv'; document.body.appendChild(a); a.click(); a.remove();
-    } catch (e) { notice(e.message); }
-  };
-  $('exp').onclick = function () {
+  if ($('npw')) $('npw').onclick = function () { openRegisterModal(); };
+  if ($('exp')) $('exp').onclick = function () {
     var rows = [['Ученик', 'Класс', 'Логин', 'Профиль 1', 'Профиль 2', 'Последний балл', 'Лучший', 'Средний', 'Написано', 'Пропущено', 'Цель', 'Статус']];
     D.students.forEach(function (s) { var c = calc(s); rows.push([s.name, s.cls, s.login, s.p1, s.p2, c.last === null ? '' : c.last, c.best === null ? '' : c.best, c.avg === null ? '' : c.avg, c.done, c.missed, s.target, status(s).t]); });
     var csv = '\ufeff' + rows.map(function (r) { return r.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'ent-tracker.csv'; document.body.appendChild(a); a.click(); a.remove();
   };
 
+  // ---------- Реестр учётных записей ----------
+  function openRegisterModal() {
+    if (!D || !D.students.length) { notice('Список учеников пуст', 'Реестр'); return; }
+    var d = $('dRegister');
+    if (!d) return;
+    var tbody = $('regTbl');
+    tbody.innerHTML = D.students.map(function (s) {
+      return '<tr><td>' + s.id + '</td><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.cls || '—') + '</td><td style="font-family:monospace; color:var(--pri);">' + esc(s.login || '—') + '</td><td style="text-align:center;"><button onclick="window.resetPassById(' + s.id + ', \'' + esc(s.name) + '\')" style="padding:4px 8px; font-size:12px; background:var(--bad); color:#fff; border:none; border-radius:4px; cursor:pointer;">Сбросить пароль</button></td></tr>';
+    }).join('');
+    d.showModal();
+  }
+
+  window.resetPassById = async function (id, name) {
+    var newPass = prompt('Введите новый пароль для ' + name + ' (минимум 6 символов):', 'student123');
+    if (!newPass) return;
+    if (newPass.length < 6) return alert('Пароль должен быть не менее 6 символов');
+    try {
+      await api('POST', '/api/students/' + id + '/password', { password: newPass });
+      alert('Пароль для ' + name + ' изменён на: ' + newPass);
+      reload();
+    } catch (e) { alert(e.message); }
+  };
+
+  if ($('regClose')) $('regClose').onclick = function () { $('dRegister').close(); };
+  if ($('regCsv')) $('regCsv').onclick = function () {
+    var rows = [['ID', 'ФИО', 'Класс', 'Логин']];
+    D.students.forEach(function (s) { rows.push([s.id, s.name, s.cls, s.login]); });
+    var csv = '\ufeff' + rows.map(function (r) { return r.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'реестр_учетных_записей.csv'; document.body.appendChild(a); a.click(); a.remove();
+  };
+  if ($('regPrint')) $('regPrint').onclick = function () {
+    var printWindow = window.open('', '_blank');
+    var cardsHtml = '<html><head><title>Ведомость карточек авторизации</title><style>body { font-family: Arial, sans-serif; padding: 20px; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; } .card { border: 2px dashed #333; padding: 15px; border-radius: 8px; page-break-inside: avoid; } .title { font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 4px; } .field { margin: 4px 0; font-size: 14px; } .val { font-weight: bold; font-family: monospace; }</style></head><body><h2>Карточки авторизации обучающихся</h2><div class="grid">';
+    D.students.forEach(function (s) {
+      cardsHtml += '<div class="card"><div class="title">🎯 ЕНТ Трекер | Карточка авторизации</div><div class="field">Обучающийся: <span class="val">' + esc(s.name) + '</span> (' + esc(s.cls || '—') + ')</div><div class="field">Адрес системы: <span class="val">ent-tracker.onrender.com</span></div><div class="field">Логин: <span class="val">' + esc(s.login || '—') + '</span></div><div class="field">Пароль: <span class="val">Ваш пароль</span></div></div>';
+    });
+    cardsHtml += '</div></body></html>';
+    printWindow.document.write(cardsHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(function () { printWindow.print(); }, 500);
+  };
+
   // ---------- добавление учеников ----------
   var created = [];
-  $('aOpen').onclick = function () { $('aForm').hidden = false; $('aRes').hidden = true; $('aErr2').textContent = ''; $('dAdd').showModal(); };
-  $('aClose').onclick = function () { $('dAdd').close(); };
-  $('aMore').onclick = function () { $('aText').value = ''; $('aForm').hidden = false; $('aRes').hidden = true; };
-  $('aGo').onclick = async function () {
+  if ($('aOpen')) $('aOpen').onclick = function () { $('aForm').hidden = false; $('aRes').hidden = true; $('aErr2').textContent = ''; $('dAdd').showModal(); };
+  if ($('aClose')) $('aClose').onclick = function () { $('dAdd').close(); };
+  if ($('aMore')) $('aMore').onclick = function () { $('aText').value = ''; $('aForm').hidden = false; $('aRes').hidden = true; };
+  if ($('aGo')) $('aGo').onclick = async function () {
     var target = Number($('aTarget').value) || 100, bad = '';
     var rows = $('aText').value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).map(function (l, i) {
       var c = l.split(/\t|;/).map(function (x) { return x.trim(); });
@@ -365,7 +417,7 @@
     } catch (e) { $('aErr2').textContent = e.message; }
     $('aGo').disabled = false;
   };
-  $('aCsv').onclick = function () {
+  if ($('aCsv')) $('aCsv').onclick = function () {
     var rows = [['Ученик', 'Класс', 'Логин', 'Пароль']].concat(created.map(function (x) { return [x.name, x.cls, x.login, x.password]; }));
     var csv = '\ufeff' + rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'ent-logins.csv'; document.body.appendChild(a); a.click(); a.remove();
@@ -373,21 +425,21 @@
 
   // ---------- вход / регистрация ----------
   function tab(reg) {
-    $('fLogin').hidden = reg; $('fReg').hidden = !reg;
-    $('tLogin').classList.toggle('on', !reg); $('tReg').classList.toggle('on', reg); $('aErr').textContent = '';
+    if ($('fLogin')) $('fLogin').hidden = reg; if ($('fReg')) $('fReg').hidden = !reg;
+    if ($('tLogin')) $('tLogin').classList.toggle('on', !reg); if ($('tReg')) $('tReg').classList.toggle('on', reg); if ($('aErr')) $('aErr').textContent = '';
   }
-  $('tLogin').onclick = function () { tab(false); };
-  $('tReg').onclick = function () { tab(true); };
+  if ($('tLogin')) $('tLogin').onclick = function () { tab(false); };
+  if ($('tReg')) $('tReg').onclick = function () { tab(true); };
   function formData(f) { var o = {}; new FormData(f).forEach(function (v, k) { o[k] = v; }); return o; }
-  $('fLogin').onsubmit = async function (e) {
+  if ($('fLogin')) $('fLogin').onsubmit = async function (e) {
     e.preventDefault();
-    try { await api('POST', '/api/login', formData(this)); this.reset(); await reload(); } catch (x) { $('aErr').textContent = x.message; }
+    try { await api('POST', '/api/login', formData(this)); this.reset(); await reload(); } catch (x) { if ($('aErr')) $('aErr').textContent = x.message; }
   };
-  $('fReg').onsubmit = async function (e) {
+  if ($('fReg')) $('fReg').onsubmit = async function (e) {
     e.preventDefault();
-    try { await api('POST', '/api/register', formData(this)); this.reset(); await reload(); } catch (x) { $('aErr').textContent = x.message; }
+    try { await api('POST', '/api/register', formData(this)); this.reset(); await reload(); } catch (x) { if ($('aErr')) $('aErr').textContent = x.message; }
   };
-  $('out').onclick = async function () { await api('POST', '/api/logout'); D = null; selSess = null; render(); };
+  if ($('out')) $('out').onclick = async function () { await api('POST', '/api/logout'); D = null; selSess = null; render(); };
 
   reload();
 })();
