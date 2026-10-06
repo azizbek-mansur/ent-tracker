@@ -3,15 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#F8FAFC">
+<meta name="theme-color" content="#E8F1EE">
 <title>ЕНТ-трекер</title>
+<script src="theme.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
   <header class="top">
     <div><h1>ЕНТ-трекер</h1><p class="sub" id="sub">Пробные тесты по вторникам и пятницам</p></div>
-    <div class="row" id="who" hidden><span id="whoName" class="mute"></span><button id="out">Выйти</button></div>
+    <div class="row">
+      <button id="theme" type="button">Ночная тема</button>
+      <div class="row" id="who" hidden><span id="whoName" class="mute"></span><button id="out">Выйти</button></div>
+    </div>
   </header>
 
   <section id="auth" hidden>
@@ -61,7 +68,7 @@
         <div class="empty" id="empty" hidden></div></div>
       <div class="row" style="margin-top:16px">
         <button id="exp">Скачать таблицу (CSV)</button>
-        <button id="npw">Новые пароли для списка (CSV)</button>
+        <button id="npw">Выдать новые пароли (CSV)</button>
         <button id="thr">Порог: <span id="thv"></span></button>
       </div>
     </div>
@@ -118,6 +125,15 @@
 <dialog id="dSt">
   <div class="dh"><h2 id="dName"></h2><button id="dClose" aria-label="Закрыть">✕</button></div>
   <div class="db" id="dBody"></div>
+</dialog>
+<dialog id="dMsg" aria-labelledby="mTitle">
+  <div class="dh"><h2 id="mTitle"></h2></div>
+  <div class="db">
+    <p class="mt" id="mText"></p>
+    <input id="mInput" type="number" step="1" hidden aria-labelledby="mText">
+    <p class="err" id="mErr" role="alert"></p>
+    <div class="row"><button id="mNo" type="button">Отмена</button><button id="mYes" type="button" class="pri">OK</button></div>
+  </div>
 </dialog>
 <script src="app.js"></script>
 </body>

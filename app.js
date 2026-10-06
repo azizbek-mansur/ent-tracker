@@ -2,6 +2,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var D = null, openId = null, selSess = null, shown = [];
   var WD = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  var LBL = { h: 'История', m: 'Математическая грамотность', r: 'Грамотность чтения', a: 'Профильный предмет 1', b: 'Профильный предмет 2' };
 
   function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -53,6 +54,41 @@
     }
   }
 
+  // ---------- свои окна вместо alert / confirm / prompt ----------
+  function ask(o) {
+    return new Promise(function (res) {
+      var d = $('dMsg'), inp = $('mInput'), yes = $('mYes'), no = $('mNo'), er = $('mErr'), done = false;
+      $('mTitle').textContent = o.title || '';
+      $('mText').textContent = o.text || '';
+      yes.textContent = o.ok || 'OK'; yes.className = o.danger ? 'danger' : 'pri';
+      no.hidden = !!o.info; er.textContent = '';
+      inp.hidden = !o.input;
+      if (o.input) { inp.min = o.input.min; inp.max = o.input.max; inp.value = o.input.value; }
+      var cancelVal = o.info ? true : (o.input ? null : false);
+      function fin(v) {
+        if (done) return; done = true;
+        yes.onclick = null; no.onclick = null; inp.oninput = null;
+        d.removeEventListener('cancel', onCancel);
+        if (d.open) d.close();
+        res(v);
+      }
+      function onCancel(e) { e.preventDefault(); fin(cancelVal); }
+      yes.onclick = function () {
+        if (!o.input) { fin(true); return; }
+        var raw = inp.value.trim(), n = Number(raw);
+        if (raw === '' || isNaN(n) || n < o.input.min || n > o.input.max) { er.textContent = 'Введите число от ' + o.input.min + ' до ' + o.input.max + '.'; inp.focus(); return; }
+        fin(n);
+      };
+      no.onclick = function () { fin(cancelVal); };
+      inp.oninput = function () { er.textContent = ''; };
+      d.addEventListener('cancel', onCancel);
+      d.showModal();
+      if (o.input) { inp.focus(); inp.select(); } else yes.focus();
+    });
+  }
+  function notice(text, title) { return ask({ title: title || 'Не получилось', text: text, info: true, ok: 'Понятно' }); }
+  $('mInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('mYes').click(); } });
+
   // ---------- график ----------
   function chart(c, target) {
     var list = c.rows.filter(function (x) { return x.st !== 'soon'; }).slice(-20);
@@ -63,6 +99,9 @@
     });
     g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(D.threshold) + '" y2="' + Y(D.threshold) + '" stroke="var(--mute)" stroke-dasharray="4 3"/>';
     g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(target) + '" y2="' + Y(target) + '" stroke="var(--pri)" stroke-dasharray="4 3"/>';
+    var tUp = target >= D.threshold;
+    function tag(v, t, col, up) { return '<text x="' + (W - R - 2) + '" y="' + (Y(v) + (up ? -4 : 12)) + '" text-anchor="end" font-size="10" font-weight="700" fill="' + col + '" stroke="var(--gs)" stroke-width="3" paint-order="stroke">' + t + ' ' + v + '</text>'; }
+    g += tag(D.threshold, 'порог', 'var(--mute)', !tUp) + tag(target, 'цель', 'var(--pri)', tUp);
     if (!list.length) return '<svg class="ch" viewBox="0 0 400 180" role="img" aria-label="График баллов">' + g + '<text x="200" y="90" text-anchor="middle" fill="var(--mute)" font-size="13">Тестов пока не было</text></svg>';
     var step = list.length < 2 ? 0 : (W - L - R) / (list.length - 1), pts = [], marks = '';
     list.forEach(function (x, i) {
@@ -73,8 +112,9 @@
     });
     g += marks;
     if (pts.length) {
-      g += '<polyline fill="none" stroke="var(--pri)" stroke-width="2.5" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"/>';
-      pts.forEach(function (p) { g += '<circle cx="' + p.x + '" cy="' + p.y + '" r="4" fill="var(--pri)"/><text x="' + p.x + '" y="' + (p.y - 8) + '" text-anchor="middle" font-size="11" fill="var(--ink)">' + p.v + '</text>'; });
+      if (pts.length > 1) g += '<path d="M' + pts[0].x + ',' + (H - B) + ' L' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' L') + ' L' + pts[pts.length - 1].x + ',' + (H - B) + ' Z" fill="var(--hl)" fill-opacity=".2"/>';
+      g += '<polyline fill="none" stroke="var(--pri)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"/>';
+      pts.forEach(function (p) { g += '<circle cx="' + p.x + '" cy="' + p.y + '" r="4.5" fill="var(--pri)" stroke="var(--gs)" stroke-width="2"/><text x="' + p.x + '" y="' + (p.y - 8) + '" text-anchor="middle" font-size="11" fill="var(--ink)">' + p.v + '</text>'; });
     }
     return '<svg class="ch" viewBox="0 0 400 180" role="img" aria-label="График баллов">' + g + '</svg>';
   }
@@ -99,7 +139,7 @@
       '<div class="legend">Цель: ' + s.target + ' баллов · ' + (left === null ? 'результатов пока нет' : left > 0 ? 'осталось набрать ' + left : 'цель достигнута') + '</div>' +
       '<div class="meter" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pct + '%"></i></div>' +
       chart(c, s.target) +
-      '<div class="legend">Серый пунктир — порог, синий — цель, красный × — пропуск.</div>' +
+      '<div class="legend">Красный × на графике — пропущенный тест.</div>' +
       '<h3>Все тесты</h3><div class="tw"><table class="hist"><thead><tr><th>День</th><th>Ист.</th><th>МГ</th><th>ГЧ</th><th>П1</th><th>П2</th><th>Итого</th></tr></thead><tbody>' +
       (c.rows.slice().reverse().map(function (x) {
         if (x.st === 'done') return '<tr><td>' + fmt(x.d) + '</td><td>' + x.r.h + '</td><td>' + x.r.m + '</td><td>' + x.r.r + '</td><td>' + x.r.a + '</td><td>' + x.r.b + '</td><td><b>' + tot(x.r) + '</b></td></tr>';
@@ -122,16 +162,16 @@
       var f = function (n) { return el.querySelector('[name=' + n + ']').value; };
       try {
         if (b.dataset.act === 'target') {
-          var v = prompt('Целевой балл (0–140):', s.target); if (v === null) return;
-          await api('PATCH', '/api/students/' + s.id, { target: Number(v) });
+          var v = await ask({ title: 'Целевой балл', text: 'Сколько баллов на ЕНТ ученик хочет набрать (0–140)?', input: { value: s.target, min: 0, max: 140 }, ok: 'Сохранить' }); if (v === null) return;
+          await api('PATCH', '/api/students/' + s.id, { target: v });
         } else if (b.dataset.act === 'edit') {
           await api('PATCH', '/api/students/' + s.id, { name: f('name'), cls: f('cls'), p1: f('p1'), p2: f('p2') });
         } else if (b.dataset.act === 'pass') {
-          if (!confirm('Создать новый пароль для «' + s.name + '»? Старый перестанет работать.')) return;
+          if (!(await ask({ title: 'Новый пароль', text: 'Создать новый пароль для «' + s.name + '»? Старый перестанет работать.', ok: 'Создать пароль' }))) return;
           var np = await api('POST', '/api/students/' + s.id + '/newpass');
           el.querySelector('[data-pass]').innerHTML = 'Логин: <b>' + esc(np.login) + '</b> · новый пароль: <b>' + esc(np.password) + '</b>. Запишите его: повторно он не показывается.'; return;
         } else if (b.dataset.act === 'del') {
-          if (!confirm('Удалить «' + s.name + '» со всеми результатами?')) return;
+          if (!(await ask({ title: 'Удалить ученика?', text: '«' + s.name + '» будет удалён вместе со всеми результатами.', ok: 'Удалить', danger: true }))) return;
           await api('DELETE', '/api/students/' + s.id); openId = null; $('dSt').close();
         }
         await reload();
@@ -182,7 +222,7 @@
       return '<tr tabindex="0" data-id="' + s.id + '"><td>' + esc(s.name) + '</td><td>' + esc(s.cls) + '</td><td>' + esc(s.login) + '</td><td>' + (c.last === null ? '—' : c.last) + '</td><td>' + dt + '</td><td>' + s.target + '</td><td class="' + (c.missed ? 'skip' : '') + '">' + c.missed + ' из ' + c.held + '</td><td><span class="pill ' + st.c + '">' + st.t + '</span></td></tr>';
     }).join('');
     $('empty').hidden = list.length > 0;
-    $('empty').textContent = D.students.length ? 'Никого не найдено. Измените поиск или класс.' : 'Пока никто не зарегистрировался. Дайте ученикам ссылку на этот сайт.';
+    $('empty').textContent = D.students.length ? 'Никого не найдено. Измените поиск или класс.' : 'Пока нет учеников. Нажмите «Добавить учеников», чтобы создать им аккаунты.';
   }
 
   // ---------- вкладка «Тесты и баллы» ----------
@@ -209,7 +249,7 @@
     $('gMsg').textContent = ''; $('gMsg').className = '';
     $('gRows').innerHTML = selSess === null ? '' : list.map(function (s) {
       var r = s.results.filter(function (x) { return x.session_id === selSess; })[0];
-      function inp(k, mx) { return '<td><input type="number" min="0" max="' + mx + '" data-k="' + k + '" aria-label="' + k + '" value="' + (r ? r[k] : '') + '"></td>'; }
+      function inp(k, mx) { return '<td><input type="number" min="0" max="' + mx + '" data-k="' + k + '" aria-label="' + LBL[k] + ', ' + esc(s.name) + '" value="' + (r ? r[k] : '') + '"></td>'; }
       return '<tr data-sid="' + s.id + '"><td class="nm">' + esc(s.name) + ' <span class="mute">' + esc(s.cls) + '</span></td>' + inp('h', 20) + inp('m', 10) + inp('r', 10) + inp('a', 50) + inp('b', 50) + '<td class="tt"><b>' + (r ? tot(r) : '') + '</b></td></tr>';
     }).join('');
     $('gEmpty').hidden = selSess !== null && list.length > 0;
@@ -217,12 +257,29 @@
   }
   $('gRows').addEventListener('input', function (e) {
     var tr = e.target.closest('tr'); if (!tr) return;
+    var ci = e.target;
+    if (ci.dataset && ci.dataset.k) { var bad = ci.value !== '' && (Number(ci.value) > Number(ci.max) || Number(ci.value) < 0); ci.classList.toggle('over', bad); ci.setAttribute('aria-invalid', bad ? 'true' : 'false'); }
     var vals = Array.prototype.map.call(tr.querySelectorAll('input'), function (i) { return i.value; });
     tr.querySelector('.tt').innerHTML = '<b>' + (vals.every(function (v) { return v === ''; }) ? '' : vals.reduce(function (a, v) { return a + (+v || 0); }, 0)) + '</b>';
+  });
+  $('gRows').addEventListener('keydown', function (e) {
+    var i = e.target;
+    if (!i.matches || !i.matches('input[data-k]')) return;
+    var dir = 0;
+    if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) dir = 1;
+    else if (e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)) dir = -1;
+    if (!dir) return;
+    e.preventDefault();
+    var tr = i.closest('tr'), nx = dir > 0 ? tr.nextElementSibling : tr.previousElementSibling;
+    var t = nx && nx.querySelector('input[data-k="' + i.dataset.k + '"]');
+    if (t) { t.focus(); try { t.select(); } catch (x) {} }
+    else if (dir > 0) $('gSave').focus();
   });
   $('sSel').onchange = function () { selSess = +this.value; renderGrid(); };
   $('sCls').onchange = renderGrid;
   $('gSave').onclick = async function () {
+    var over = $('gRows').querySelector('input.over');
+    if (over) { $('gMsg').className = 'err'; $('gMsg').textContent = 'Проверьте выделенные поля: балл выше максимума или меньше нуля.'; over.focus(); return; }
     var rows = Array.prototype.map.call($('gRows').querySelectorAll('tr'), function (tr) {
       var o = { studentId: +tr.dataset.sid }, blank = true;
       tr.querySelectorAll('input').forEach(function (i) { o[i.dataset.k] = i.value === '' ? 0 : Number(i.value); if (i.value !== '') blank = false; });
@@ -235,11 +292,12 @@
     } catch (e) { $('gMsg').className = 'err'; $('gMsg').textContent = e.message; }
   };
   $('sDel').onclick = async function () {
-    if (selSess === null || !confirm('Удалить этот день и все баллы за него?')) return;
-    try { await api('DELETE', '/api/sessions/' + selSess); selSess = null; await reload(); } catch (e) { alert(e.message); }
+    if (selSess === null) return;
+    if (!(await ask({ title: 'Удалить день?', text: 'Вместе с днём удалятся все баллы за него.', ok: 'Удалить', danger: true }))) return;
+    try { await api('DELETE', '/api/sessions/' + selSess); selSess = null; await reload(); } catch (e) { notice(e.message); }
   };
   $('gMake').onclick = async function () {
-    try { var r = await api('POST', '/api/sessions', { from: $('gFrom').value, to: $('gTo').value }); $('gErr').textContent = ''; await reload(); alert('Добавлено дней: ' + r.added); }
+    try { var r = await api('POST', '/api/sessions', { from: $('gFrom').value, to: $('gTo').value }); $('gErr').textContent = ''; await reload(); await notice('Добавлено дней: ' + r.added, 'Готово'); }
     catch (e) { $('gErr').textContent = e.message; }
   };
   $('gAdd').onclick = async function () {
@@ -264,18 +322,18 @@
   ['q', 'fc', 'fs'].forEach(function (i) { $(i).addEventListener('input', renderTeacher); });
 
   $('thr').onclick = async function () {
-    var v = prompt('Порог ЕНТ: ниже этого балла ученик попадает в зону риска (0–140):', D.threshold); if (v === null) return;
-    try { await api('PUT', '/api/settings', { threshold: Number(v) }); await reload(); } catch (e) { alert(e.message); }
+    var v = await ask({ title: 'Порог ЕНТ', text: 'Ученики с баллом ниже порога попадают в зону риска (0–140).', input: { value: D.threshold, min: 0, max: 140 }, ok: 'Сохранить' }); if (v === null) return;
+    try { await api('PUT', '/api/settings', { threshold: v }); await reload(); } catch (e) { notice(e.message); }
   };
   $('npw').onclick = async function () {
-    if (!shown.length) { alert('В списке нет учеников'); return; }
-    if (!confirm('Создать НОВЫЕ пароли для учеников в списке (' + shown.length + ')? Старые пароли перестанут работать.')) return;
+    if (!shown.length) { await notice('В списке нет учеников.', 'Список пуст'); return; }
+    if (!(await ask({ title: 'Новые пароли', text: 'Создать новые пароли для учеников в списке (' + shown.length + ')? Старые пароли перестанут работать.', ok: 'Создать пароли', danger: true }))) return;
     try {
       var r = await api('POST', '/api/students/newpass-bulk', { ids: shown });
       var rows = [['Ученик', 'Класс', 'Логин', 'Пароль']].concat(r.created.map(function (x) { return [x.name, x.cls, x.login, x.password]; }));
       var csv = '\ufeff' + rows.map(function (q) { return q.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
       var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'ent-logins.csv'; document.body.appendChild(a); a.click(); a.remove();
-    } catch (e) { alert(e.message); }
+    } catch (e) { notice(e.message); }
   };
   $('exp').onclick = function () {
     var rows = [['Ученик', 'Класс', 'Логин', 'Профиль 1', 'Профиль 2', 'Последний балл', 'Лучший', 'Средний', 'Написано', 'Пропущено', 'Цель', 'Статус']];
