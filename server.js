@@ -47,24 +47,17 @@ create table if not exists settings(key text primary key, value text not null);
 const app = express();
 app.use(express.json({ limit: '50kb' }));
 app.use(cookieParser());
-
-// Отдача статических файлов
-app.use(express.static(__dirname));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Универсальный маршрут главной страницы
-app.get('/', (req, res) => {
-  const rootIndex = path.join(__dirname, 'index.html');
-  const publicIndex = path.join(__dirname, 'public', 'index.html');
-
-  if (fs.existsSync(rootIndex)) {
-    return res.sendFile(rootIndex);
-  } else if (fs.existsSync(publicIndex)) {
-    return res.sendFile(publicIndex);
-  } else {
-    res.status(404).send('Ошибка: файл index.html не найден в репозитории!');
-  }
-});
+// Сайт отдаётся безопасно: наружу уходят только файлы самого сайта,
+// но НЕ server.js, ent.db и .env.
+const PUB = path.join(__dirname, 'public');
+if (fs.existsSync(path.join(PUB, 'index.html'))) {
+  app.use(express.static(PUB)); // структура с папкой public
+} else {
+  // плоская структура (все файлы лежат в корне, как в GitHub-репозитории): отдаём только три файла
+  ['index.html', 'app.js', 'style.css'].forEach(f =>
+    app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f))));
+  app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+}
 
 // ---------- helpers ----------
 const fails = new Map(); // ip -> {n, t}
@@ -111,6 +104,7 @@ const ABC = 'abcdefghjkmnpqrstuvwxyz23456789';
 const makePass = () => Array.from({ length: 8 }, () => ABC[crypto.randomInt(ABC.length)]).join('');
 
 // ---------- auth ----------
+// Регистрация открыта только для учителей (нужен код из .env). Учеников создаёт учитель.
 app.post('/api/register', limited, (req, res) => {
   const b = req.body || {};
   const login = str(b.login, 30).toLowerCase();
@@ -141,7 +135,7 @@ app.post('/api/logout', (req, res) => { res.clearCookie('token'); res.json({ ok:
 // ---------- data ----------
 app.get('/api/data', needAuth, (req, res) => {
   const me = req.user, teacher = me.role === 'teacher';
-  const cols = 'id,login,name';
+  const cols = 'id,login,name,cls,p1,p2,target';
   const students = teacher
     ? db.prepare(`select ${cols} from users where role='student' order by name`).all()
     : db.prepare(`select ${cols} from users where id=?`).all(me.id);
@@ -238,6 +232,28 @@ app.patch('/api/students/:id', needAuth, needTeacher, (req, res) => {
     db.prepare("update users set name=?, cls=?, p1=?, p2=? where id=? and role='student'").run(name, cls, str(b.p1, 40), str(b.p2, 40), id);
   }
   res.json({ ok: true });
+});
+
+// --- новые пароли (старые хранятся только в зашифрованном виде, посмотреть их нельзя) ---
+function newPassword(id, rounds) {
+  const u = db.prepare("select id,login,name,cls from users where id=? and role='student'").get(id);
+  if (!u) return null;
+  const password = makePass();
+  db.prepare('update users set pass_hash=? where id=?').run(bcrypt.hashSync(password, rounds), id);
+  return { name: u.name, cls: u.cls, login: u.login, password };
+}
+app.post('/api/students/newpass-bulk', needAuth, needTeacher, (req, res) => {
+  const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(Number) : [];
+  if (!ids.length) return res.status(400).json({ error: 'Список пуст' });
+  if (ids.length > 150) return res.status(400).json({ error: 'За один раз можно до 150 учеников' });
+  const out = [];
+  db.transaction(() => ids.forEach(id => { const r = newPassword(id, 8); if (r) out.push(r); }))();
+  res.json({ ok: true, created: out });
+});
+app.post('/api/students/:id/newpass', needAuth, needTeacher, (req, res) => {
+  const r = newPassword(Number(req.params.id), 10);
+  if (!r) return res.status(404).json({ error: 'Ученик не найден' });
+  res.json({ ok: true, ...r });
 });
 
 app.delete('/api/students/:id', needAuth, needTeacher, (req, res) => {

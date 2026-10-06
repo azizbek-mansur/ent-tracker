@@ -1,6 +1,6 @@
 (function () {
   var $ = function (id) { return document.getElementById(id); };
-  var D = null, openId = null, selSess = null;
+  var D = null, openId = null, selSess = null, shown = [];
   var WD = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 
   function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -89,7 +89,7 @@
     var left = c.last === null ? null : s.target - c.last;
     var att = c.held ? Math.round(c.done / c.held * 100) : null;
     var html =
-      '<div class="legend">' + esc(s.cls) + ' класс · ' + esc([s.p1, s.p2].filter(Boolean).join(', ') || 'профильные предметы не указаны') + ' · <b class="' + st.c + '">' + st.t + '</b></div>' +
+      '<div class="legend">' + esc(s.cls) + ' класс · логин: <b>' + esc(s.login) + '</b> · ' + esc([s.p1, s.p2].filter(Boolean).join(', ') || 'профильные предметы не указаны') + ' · <b class="' + st.c + '">' + st.t + '</b></div>' +
       '<div class="big">' +
       '<div><b>' + (c.last === null ? '—' : c.last) + dTxt + '</b><span>последний балл из 140</span></div>' +
       '<div><b>' + (c.best === null ? '—' : c.best) + '</b><span>лучший балл</span></div>' +
@@ -113,7 +113,7 @@
       '<label>Класс<input name="cls" value="' + esc(s.cls) + '"></label>' +
       '<label>Профиль 1<input name="p1" value="' + esc(s.p1) + '"></label>' +
       '<label>Профиль 2<input name="p2" value="' + esc(s.p2) + '"></label></div>' +
-      '<div class="row" style="margin-top:16px"><button data-act="target">Изменить цель</button><button data-act="edit">Сохранить данные</button><button data-act="pass">Сбросить пароль</button><button class="danger" data-act="del">Удалить ученика</button></div>';
+      '<div class="row" style="margin-top:16px"><button data-act="target">Изменить цель</button><button data-act="edit">Сохранить данные</button><button data-act="pass">Сбросить пароль</button><button class="danger" data-act="del">Удалить ученика</button></div><p class="legend" data-pass role="status" style="margin-top:16px"></p>';
     el.innerHTML = html;
 
     el.onclick = async function (e) {
@@ -127,9 +127,9 @@
         } else if (b.dataset.act === 'edit') {
           await api('PATCH', '/api/students/' + s.id, { name: f('name'), cls: f('cls'), p1: f('p1'), p2: f('p2') });
         } else if (b.dataset.act === 'pass') {
-          var p = prompt('Новый пароль для «' + s.name + '» (от 6 символов):'); if (!p) return;
-          await api('POST', '/api/students/' + s.id + '/password', { password: p });
-          alert('Пароль изменён. Передайте его ученику.'); return;
+          if (!confirm('Создать новый пароль для «' + s.name + '»? Старый перестанет работать.')) return;
+          var np = await api('POST', '/api/students/' + s.id + '/newpass');
+          el.querySelector('[data-pass]').innerHTML = 'Логин: <b>' + esc(np.login) + '</b> · новый пароль: <b>' + esc(np.password) + '</b>. Запишите его: повторно он не показывается.'; return;
         } else if (b.dataset.act === 'del') {
           if (!confirm('Удалить «' + s.name + '» со всеми результатами?')) return;
           await api('DELETE', '/api/students/' + s.id); openId = null; $('dSt').close();
@@ -169,6 +169,7 @@
       if (so === 'miss') return C[b.id].missed - C[a.id].missed || a.name.localeCompare(b.name, 'ru');
       return status(a).k - status(b).k || a.name.localeCompare(b.name, 'ru');
     });
+    shown = list.map(function (s) { return s.id; });
     var withT = D.students.filter(function (s) { return C[s.id].last !== null; });
     var avg = withT.length ? Math.round(withT.reduce(function (a, s) { return a + C[s.id].last; }, 0) / withT.length) : '—';
     var risk = D.students.filter(function (s) { return status(s).k === 0; }).length;
@@ -178,7 +179,7 @@
     $('rows').innerHTML = list.map(function (s) {
       var st = status(s), c = C[s.id], d = c.prev === null ? null : c.last - c.prev;
       var dt = d === null ? '<span class="mute">—</span>' : '<span class="' + (d > 0 ? 'ok' : d < 0 ? 'bad' : 'mute') + '">' + (d > 0 ? '+' : '') + d + '</span>';
-      return '<tr tabindex="0" data-id="' + s.id + '"><td>' + esc(s.name) + '</td><td>' + esc(s.cls) + '</td><td>' + (c.last === null ? '—' : c.last) + '</td><td>' + dt + '</td><td>' + s.target + '</td><td class="' + (c.missed ? 'skip' : '') + '">' + c.missed + ' из ' + c.held + '</td><td><span class="pill ' + st.c + '">' + st.t + '</span></td></tr>';
+      return '<tr tabindex="0" data-id="' + s.id + '"><td>' + esc(s.name) + '</td><td>' + esc(s.cls) + '</td><td>' + esc(s.login) + '</td><td>' + (c.last === null ? '—' : c.last) + '</td><td>' + dt + '</td><td>' + s.target + '</td><td class="' + (c.missed ? 'skip' : '') + '">' + c.missed + ' из ' + c.held + '</td><td><span class="pill ' + st.c + '">' + st.t + '</span></td></tr>';
     }).join('');
     $('empty').hidden = list.length > 0;
     $('empty').textContent = D.students.length ? 'Никого не найдено. Измените поиск или класс.' : 'Пока никто не зарегистрировался. Дайте ученикам ссылку на этот сайт.';
@@ -266,9 +267,19 @@
     var v = prompt('Порог ЕНТ: ниже этого балла ученик попадает в зону риска (0–140):', D.threshold); if (v === null) return;
     try { await api('PUT', '/api/settings', { threshold: Number(v) }); await reload(); } catch (e) { alert(e.message); }
   };
+  $('npw').onclick = async function () {
+    if (!shown.length) { alert('В списке нет учеников'); return; }
+    if (!confirm('Создать НОВЫЕ пароли для учеников в списке (' + shown.length + ')? Старые пароли перестанут работать.')) return;
+    try {
+      var r = await api('POST', '/api/students/newpass-bulk', { ids: shown });
+      var rows = [['Ученик', 'Класс', 'Логин', 'Пароль']].concat(r.created.map(function (x) { return [x.name, x.cls, x.login, x.password]; }));
+      var csv = '\ufeff' + rows.map(function (q) { return q.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
+      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'ent-logins.csv'; document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { alert(e.message); }
+  };
   $('exp').onclick = function () {
-    var rows = [['Ученик', 'Класс', 'Профиль 1', 'Профиль 2', 'Последний балл', 'Лучший', 'Средний', 'Написано', 'Пропущено', 'Цель', 'Статус']];
-    D.students.forEach(function (s) { var c = calc(s); rows.push([s.name, s.cls, s.p1, s.p2, c.last === null ? '' : c.last, c.best === null ? '' : c.best, c.avg === null ? '' : c.avg, c.done, c.missed, s.target, status(s).t]); });
+    var rows = [['Ученик', 'Класс', 'Логин', 'Профиль 1', 'Профиль 2', 'Последний балл', 'Лучший', 'Средний', 'Написано', 'Пропущено', 'Цель', 'Статус']];
+    D.students.forEach(function (s) { var c = calc(s); rows.push([s.name, s.cls, s.login, s.p1, s.p2, c.last === null ? '' : c.last, c.best === null ? '' : c.best, c.avg === null ? '' : c.avg, c.done, c.missed, s.target, status(s).t]); });
     var csv = '\ufeff' + rows.map(function (r) { return r.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';'); }).join('\n');
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'ent-tracker.csv'; document.body.appendChild(a); a.click(); a.remove();
   };
