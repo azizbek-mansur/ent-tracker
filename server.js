@@ -53,8 +53,8 @@ const PUB = path.join(__dirname, 'public');
 if (fs.existsSync(path.join(PUB, 'index.html'))) {
   app.use(express.static(PUB)); // структура с папкой public
 } else {
-  // плоская структура (все файлы лежат в корне, как в GitHub-репозитории): отдаём только три файла
-  ['index.html', 'app.js', 'style.css'].forEach(f =>
+  // плоская структура (все файлы лежат в корне, как в GitHub-репозитории): отдаём только файлы сайта
+  ['index.html', 'app.js', 'style.css', 'theme.js'].forEach(f =>
     app.get('/' + f, (req, res) => res.sendFile(path.join(__dirname, f))));
   app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 }
