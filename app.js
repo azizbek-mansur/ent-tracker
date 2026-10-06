@@ -265,8 +265,15 @@
     if ($('gTo') && !$('gTo').value) $('gTo').value = (y0 + 1) + '-05-31';
     renderGrid();
   }
+
   function renderGrid() {
     var f = $('sCls') ? $('sCls').value : '', list = D.students.filter(function (s) { return !f || s.cls === f; });
+    
+    // Сортировка учеников по алфавиту внутри выбранного класса
+    list.sort(function (a, b) {
+      return a.name.localeCompare(b.name, 'ru');
+    });
+
     if ($('gSave')) $('gSave').disabled = selSess === null;
     if ($('gMsg')) { $('gMsg').textContent = ''; $('gMsg').className = ''; }
     if ($('gRows')) $('gRows').innerHTML = selSess === null ? '' : list.map(function (s) {
