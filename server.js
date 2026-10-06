@@ -141,7 +141,7 @@ app.post('/api/logout', (req, res) => { res.clearCookie('token'); res.json({ ok:
 // ---------- data ----------
 app.get('/api/data', needAuth, (req, res) => {
   const me = req.user, teacher = me.role === 'teacher';
-  const cols = 'id,login,name,cls,p1,p2,target';
+  const cols = 'id,login,name';
   const students = teacher
     ? db.prepare(`select ${cols} from users where role='student' order by name`).all()
     : db.prepare(`select ${cols} from users where id=?`).all(me.id);
