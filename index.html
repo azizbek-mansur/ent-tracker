@@ -68,7 +68,7 @@
         <div class="empty" id="empty" hidden></div></div>
       <div class="row" style="margin-top:16px">
         <button id="exp">Скачать таблицу (CSV)</button>
-        <button id="npw">Выдать новые пароли (CSV)</button>
+        <button id="npw">🔑 Реестр учётных записей</button>
         <button id="thr">Порог: <span id="thv"></span></button>
       </div>
     </div>
@@ -122,10 +122,39 @@
   </div>
 </dialog>
 
+<!-- Диалоговое окно: Реестр учётных записей -->
+<dialog id="dRegister">
+  <div class="dh">
+    <h2>🔑 Реестр учётных записей</h2>
+    <button id="regClose" aria-label="Закрыть">✕</button>
+  </div>
+  <div class="db">
+    <div class="row" style="margin-bottom:16px;">
+      <button id="regCsv" class="pri">📥 Экспорт реестра (CSV)</button>
+      <button id="regPrint">🖨️ Печать карточек авторизации</button>
+    </div>
+    <div class="tw" style="max-height:50vh; overflow-y:auto;">
+      <table class="hist">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>ФИО</th>
+            <th>Класс</th>
+            <th>Логин</th>
+            <th style="text-align:center;">Действия</th>
+          </tr>
+        </thead>
+        <tbody id="regTbl"></tbody>
+      </table>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="dSt">
   <div class="dh"><h2 id="dName"></h2><button id="dClose" aria-label="Закрыть">✕</button></div>
   <div class="db" id="dBody"></div>
 </dialog>
+
 <dialog id="dMsg" aria-labelledby="mTitle">
   <div class="dh"><h2 id="mTitle"></h2></div>
   <div class="db">
@@ -135,6 +164,7 @@
     <div class="row"><button id="mNo" type="button">Отмена</button><button id="mYes" type="button" class="pri">OK</button></div>
   </div>
 </dialog>
+
 <script src="app.js"></script>
 </body>
 </html>
