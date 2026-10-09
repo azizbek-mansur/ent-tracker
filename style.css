@@ -145,8 +145,13 @@ dialog::backdrop{background:rgba(6,16,15,.45);-webkit-backdrop-filter:blur(4px);
 
 @media (max-width:640px){
   main{padding:16px 14px 32px}
-  h1{font-size:24px}
-  .top{gap:12px;margin-bottom:20px}
+  h1{font-size:24px;color:var(--ac);letter-spacing:-.03em;white-space:nowrap}
+  .top{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:8px;margin-bottom:20px}
+  .top>div:first-child{min-width:0}
+  .top>div:last-child{display:contents}
+  #who{grid-column:1/-1;justify-self:end}
+  #theme{background:var(--ac);border-color:var(--ac);color:var(--acx);font-weight:700}
+  #out{background:var(--bad-bg);border-color:color-mix(in srgb,var(--bad) 45%,transparent);color:var(--bad);font-weight:700}
   .card{padding:18px}
   .card,.stat,.tabs{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 }
@@ -156,9 +161,7 @@ dialog::backdrop{background:rgba(6,16,15,.45);-webkit-backdrop-filter:blur(4px);
   h1{font-size:22px}
   h3{font-size:16px;margin:18px 0 6px}
   .sub{font-size:13px}
-  .top{gap:10px;margin-bottom:16px}
-  .top>div:first-child{min-width:0;flex:1 1 100%}
-  .top>div:last-child{width:100%;justify-content:flex-start;gap:8px}
+  .top{row-gap:8px;margin-bottom:16px}
   #whoName{max-width:44vw;overflow-wrap:anywhere;font-size:13px}
   .row{gap:8px}
   button{min-height:42px;padding:0 12px}

@@ -147,7 +147,8 @@
       '<div><b>' + (c.best === null ? '—' : c.best) + '</b><span>лучший балл</span></div>' +
       '<div><b>' + (c.avg === null ? '—' : c.avg) + '</b><span>средний балл</span></div>' +
       '<div><b>' + c.done + ' из ' + c.held + '</b><span>написано тестов' + (att === null ? '' : ' (' + att + '%)') + '</span></div>' +
-      '<div><b class="' + (c.missed ? 'skip' : '') + '">' + c.missed + '</b><span>пропущено</span></div></div>' +
+      '<div><b class="' + (c.missed ? 'skip' : '') + '">' + c.missed + '</b><span>пропущено</span></div>' +
+      '<div><b class="' + (d === '' ? 'mute' : d > 0 ? 'ok' : d < 0 ? 'bad' : 'mute') + '">' + (d === '' ? '—' : (d > 0 ? '+' : '') + d) + '</b><span>динамика балла</span></div></div>' +
       '<div class="legend">Цель: ' + s.target + ' баллов из ' + maxVal + ' · ' + (left === null ? 'результатов пока нет' : left > 0 ? 'осталось набрать ' + left : 'цель достигнута') + '</div>' +
       '<div class="meter" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pct + '%"></i></div>' +
       chart(c, s.target, maxVal) +
