@@ -152,10 +152,14 @@ app.get('/api/data', needAuth, (req, res) => {
 // --- дни тестов (вторник и пятница) ---
 app.post('/api/sessions', needAuth, needTeacher, (req, res) => {
   const b = req.body || {}, ins = db.prepare('insert or ignore into sessions(d) values(?)');
-  const ok = v => /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v));
+  const ok = v => {
+    if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    const date = new Date(v + 'T00:00:00.000Z');
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === v;
+  };
   if (b.d) {
     if (!ok(b.d)) return res.status(400).json({ error: 'Неверная дата' });
-    ins.run(b.d); return res.json({ ok: true, added: 1 });
+    return res.json({ ok: true, added: ins.run(b.d).changes });
   }
   if (!ok(b.from) || !ok(b.to)) return res.status(400).json({ error: 'Укажите даты «с» и «по»' });
   const a = Date.parse(b.from), z = Date.parse(b.to);
@@ -213,7 +217,9 @@ app.post('/api/students/bulk', needAuth, needTeacher, (req, res) => {
   if (!rows.length) return res.status(400).json({ error: 'Список пуст' });
   if (rows.length > 150) return res.status(400).json({ error: 'За один раз можно добавить до 150 учеников' });
   for (let i = 0; i < rows.length; i++)
-    if (!str(rows[i].name, 80) || !str(rows[i].cls, 10)) return res.status(400).json({ error: `Строка ${i + 1}: нужны фамилия, имя и класс` });
+    if (!rows[i] || !str(rows[i].name, 80) || !str(rows[i].cls, 10)) return res.status(400).json({ error: `Строка ${i + 1}: нужны фамилия, имя и класс` });
+  for (let i = 0; i < rows.length; i++)
+    if (rows[i].target !== undefined && int(rows[i].target, 0, 140) === null) return res.status(400).json({ error: `Строка ${i + 1}: цель должна быть числом от 0 до 140` });
   const out = [];
   db.transaction(() => rows.forEach(r => out.push(createStudent(r, 8))))();
   res.json({ ok: true, created: out });

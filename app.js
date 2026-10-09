@@ -319,7 +319,7 @@
     });
   }
 
-  if ($('sSel')) $('sSel').onchange = function () { selSess = +this.value; renderGrid(); };
+  if ($('sSel')) $('sSel').onchange = function () { selSess = this.value ? Number(this.value) : null; renderGrid(); };
   if ($('sCls')) $('sCls').onchange = renderGrid;
   if ($('gSave')) $('gSave').onclick = async function () {
     var over = $('gRows').querySelector('input.over');
@@ -386,12 +386,15 @@
     if (!d) return;
     var tbody = $('regTbl');
     tbody.innerHTML = D.students.map(function (s) {
-      return '<tr><td>' + s.id + '</td><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.cls || '—') + '</td><td style="font-family:monospace; color:var(--pri);">' + esc(s.login || '—') + '</td><td style="text-align:center;"><button onclick="window.resetPassById(' + s.id + ', \'' + esc(s.name) + '\')" style="padding:4px 8px; font-size:12px; background:var(--bad); color:#fff; border:none; border-radius:4px; cursor:pointer;">Сбросить пароль</button></td></tr>';
+      return '<tr><td>' + s.id + '</td><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.cls || '—') + '</td><td style="font-family:monospace; color:var(--pri);">' + esc(s.login || '—') + '</td><td style="text-align:center;"><button data-reset-pass="' + s.id + '" style="padding:4px 8px; font-size:12px; background:var(--bad); color:#fff; border:none; border-radius:4px; cursor:pointer;">Сбросить пароль</button></td></tr>';
     }).join('');
     d.showModal();
   }
 
-  window.resetPassById = async function (id, name) {
+  async function resetPassById(id) {
+    var student = D.students.filter(function (s) { return s.id === id; })[0];
+    if (!student) return;
+    var name = student.name;
     var newPass = prompt('Введите новый пароль для ' + name + ' (минимум 6 символов):', 'student123');
     if (!newPass) return;
     if (newPass.length < 6) return alert('Пароль должен быть не менее 6 символов');
@@ -400,7 +403,11 @@
       alert('Пароль для ' + name + ' изменён на: ' + newPass);
       reload();
     } catch (e) { alert(e.message); }
-  };
+  }
+  if ($('regTbl')) $('regTbl').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-reset-pass]');
+    if (b) resetPassById(Number(b.dataset.resetPass));
+  });
 
   if ($('regClose')) $('regClose').onclick = function () { $('dRegister').close(); };
   if ($('regCsv')) $('regCsv').onclick = function () {
@@ -428,12 +435,13 @@
   if ($('aClose')) $('aClose').onclick = function () { $('dAdd').close(); };
   if ($('aMore')) $('aMore').onclick = function () { $('aText').value = ''; $('aForm').hidden = false; $('aRes').hidden = true; };
   if ($('aGo')) $('aGo').onclick = async function () {
-    var target = Number($('aTarget').value) || 100, bad = '';
+    var target = $('aTarget').value === '' ? 100 : Number($('aTarget').value), bad = '';
+    if (!Number.isInteger(target) || target < 0 || target > 140) { $('aErr2').textContent = 'Целевой балл должен быть целым числом от 0 до 140'; return; }
     var rows = $('aText').value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).map(function (l, i) {
       var c = l.split(/\t|;/).map(function (x) { return x.trim(); });
       if (!c[0] || !c[1]) bad = bad || 'Строка ' + (i + 1) + ': нужны фамилия с именем и класс';
       var isCreativeRow = String(c[2] || '').toLowerCase().indexOf('творч') > -1 || String(c[3] || '').toLowerCase().indexOf('творч') > -1;
-      var rowTarget = isCreativeRow ? Math.min(target, 35) : target;
+      var rowTarget = isCreativeRow ? Math.min(target, 40) : target;
       return { name: c[0], cls: c[1], p1: c[2] || '', p2: c[3] || '', target: rowTarget };
     });
     if (bad) { $('aErr2').textContent = bad; return; }
