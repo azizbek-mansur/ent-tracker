@@ -1,33 +1,33 @@
-/* ЕНТ-трекер: спокойные матовые поверхности и контрастная бирюзовая палитра. */
+/* ЕНТ-трекер: нейтральные поверхности с акцентами Indigo. */
 
 /* ====== Цветовая система ====== */
 :root,:root[data-theme="day"]{
   color-scheme:light;
-  --base:#F4F7F8;--surface:#FFFFFF;--surface-2:#F0F7F6;
-  --glass:var(--surface);--gs:var(--surface-2);--bd:#D9E4E5;--line:#D9E4E5;--field:#94A3B8;
-  --tx:#0F172A;--mu:#64748B;
-  --ac:#0F766E;--acx:#FFFFFF;--ac-d:#115E59;--hl:#14B8A6;--hlx:#071A1D;
-  --ok:#16A34A;--ok-bg:color-mix(in srgb,var(--ok) 12%,var(--surface));
-  --warn:#B45309;--warn-bg:#FFF7ED;
-  --bad:#DC2626;--bad-ink:#FFFFFF;--bad-bg:color-mix(in srgb,var(--bad) 10%,var(--surface));
+  --base:#F6F7FB;--surface:#FFFFFF;--surface-2:#F1F3F7;
+  --glass:var(--surface);--gs:var(--surface-2);--bd:#E5E7EB;--line:#E5E7EB;--field:#E5E7EB;
+  --tx:#111827;--mu:#6B7280;--dim:#9CA3AF;
+  --ac:#4F46E5;--acx:#FFFFFF;--ac-d:#4338CA;--ac-soft:#EEF2FF;
+  --ok:#16A34A;--ok-bg:#DCFCE7;
+  --warn:#D97706;--warn-bg:#FEF3C7;
+  --bad:#DC2626;--bad-ink:#FFFFFF;--bad-bg:#FEE2E2;
   --sh:0 8px 24px rgba(15,23,42,.07);
 }
 :root[data-theme="night"]{
   color-scheme:dark;
-  --base:#071A1D;--surface:#10282B;--surface-2:#153337;
-  --glass:var(--surface);--gs:var(--surface-2);--bd:#244044;--line:#244044;--field:#64748B;
-  --tx:#F1F5F9;--mu:#94A3B8;
-  --ac:#14B8A6;--acx:#071A1D;--ac-d:#2DD4BF;--hl:#2DD4BF;--hlx:#071A1D;
-  --ok:#22C55E;--ok-bg:color-mix(in srgb,var(--ok) 14%,var(--surface));
-  --warn:#FBBF24;--warn-bg:#332B17;
-  --bad:#EF4444;--bad-ink:#FFFFFF;--bad-bg:color-mix(in srgb,var(--bad) 14%,var(--surface));
+  --base:#0B0F19;--surface:#111827;--surface-2:#151C2B;
+  --glass:var(--surface);--gs:var(--surface-2);--bd:#1F2937;--line:#1F2937;--field:#1F2937;
+  --tx:#F9FAFB;--mu:#9CA3AF;--dim:#6B7280;
+  --ac:#6366F1;--acx:#FFFFFF;--ac-d:#818CF8;--ac-soft:#1E1B4B;
+  --ok:#22C55E;--ok-bg:#052E16;
+  --warn:#F59E0B;--warn-bg:#451A03;
+  --bad:#F87171;--bad-ink:#0B0F19;--bad-bg:#450A0A;
   --sh:0 8px 24px rgba(0,0,0,.22);
 }
 /* старые имена переменных, чтобы app.js и inline-стили не сломались */
 :root{
-  --bg:var(--base);--card:var(--gs);--ink:var(--tx);--label:var(--mu);--mute:var(--mu);
-  --pri:var(--ac);--pri-d:var(--ac-d);--pri-ink:var(--acx);--pri-soft:color-mix(in srgb,var(--ac) 12%,transparent);
-  --teal:var(--hl);--r:20px;--r-s:12px;
+  --bg:var(--base);--card:var(--gs);--ink:var(--tx);--label:var(--mu);--mute:var(--dim);
+  --pri:var(--ac);--pri-d:var(--ac-d);--pri-ink:var(--acx);--pri-soft:var(--ac-soft);
+  --r:20px;--r-s:12px;
 }
 
 *{box-sizing:border-box}
@@ -103,13 +103,13 @@ tbody tr[data-id]:hover{background:color-mix(in srgb,var(--ac) 10%,transparent)}
 .empty{padding:40px 24px;text-align:center;color:var(--mu)}
 
 /* статусы */
-.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.mute{color:var(--mu)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.mute{color:var(--dim)}
 .pill{display:inline-block;padding:3px 12px;border-radius:999px;font-size:14px;font-weight:500}
 .pill.ok{background:var(--ok-bg);color:var(--ok)}
 .pill.warn{background:var(--warn-bg);color:var(--warn)}
 .pill.bad{background:var(--bad-bg);color:var(--bad)}
-.pill.mute{background:var(--line);color:var(--mu)}
-.skip{color:var(--bad);font-weight:600}.soon{color:var(--mu)}
+.pill.mute{background:var(--line);color:var(--dim)}
+.skip{color:var(--bad);font-weight:600}.soon{color:var(--dim)}
 
 /* карточка ученика */
 .legend{font-size:14px;color:var(--mu)}
@@ -118,12 +118,12 @@ tbody tr[data-id]:hover{background:color-mix(in srgb,var(--ac) 10%,transparent)}
 .big b{display:block;font-size:30px;line-height:1.15;font-weight:800}
 .big span{font-size:14px;color:var(--mu)}
 .meter{height:8px;border-radius:999px;background:var(--glass);border:1px solid var(--bd);overflow:hidden;margin:10px 0 14px}
-.meter i{display:block;height:100%;background:var(--hl);border-radius:999px}
+.meter i{display:block;height:100%;background:var(--ac);border-radius:999px}
 svg.ch{width:100%;height:auto;display:block;margin:16px 0 8px;border-radius:14px}
 
 /* диалоги */
 dialog{color:var(--tx);border-radius:var(--r);padding:0;width:min(672px,94vw);max-height:92vh;overflow:auto;background:var(--gs)}
-dialog::backdrop{background:rgba(7,26,29,.68)}
+dialog::backdrop{background:rgba(11,15,25,.68)}
 .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:24px 24px 0}
 .dh h2{margin:0;font-size:22px;line-height:1.3;font-weight:800}
 .db{padding:16px 24px 24px}

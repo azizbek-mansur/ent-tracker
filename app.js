@@ -109,7 +109,8 @@
     g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(target) + '" y2="' + Y(target) + '" stroke="var(--pri)" stroke-dasharray="4 3"/>';
     function tag(v, t, col, up) { return '<text x="' + (W - R - 2) + '" y="' + (Y(v) + (up ? -4 : 12)) + '" text-anchor="end" font-size="10" font-weight="700" fill="' + col + '" stroke="var(--gs)" stroke-width="3" paint-order="stroke">' + t + ' ' + v + '</text>'; }
     g += tag(target, 'цель', 'var(--pri)', true);
-    if (!list.length) return '<svg class="ch" viewBox="0 0 400 180" role="img" aria-label="График баллов">' + g + '<text x="200" y="90" text-anchor="middle" fill="var(--mute)" font-size="13">Тестов пока не было</text></svg>';
+    var fill = '<defs><linearGradient id="score-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--pri)" stop-opacity=".2"/><stop offset="100%" stop-color="var(--pri)" stop-opacity="0"/></linearGradient></defs>';
+    if (!list.length) return '<svg class="ch" viewBox="0 0 400 180" role="img" aria-label="График баллов">' + fill + g + '<text x="200" y="90" text-anchor="middle" fill="var(--mute)" font-size="13">Тестов пока не было</text></svg>';
     var step = list.length < 2 ? 0 : (W - L - R) / (list.length - 1), pts = [], marks = '';
     list.forEach(function (x, i) {
       var px = list.length < 2 ? (L + W - R) / 2 : L + i * step;
@@ -119,11 +120,11 @@
     });
     g += marks;
     if (pts.length) {
-      if (pts.length > 1) g += '<path d="M' + pts[0].x + ',' + (H - B) + ' L' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' L') + ' L' + pts[pts.length - 1].x + ',' + (H - B) + ' Z" fill="var(--hl)" fill-opacity=".2"/>';
+      if (pts.length > 1) g += '<path d="M' + pts[0].x + ',' + (H - B) + ' L' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' L') + ' L' + pts[pts.length - 1].x + ',' + (H - B) + ' Z" fill="url(#score-fill)"/>';
       g += '<polyline fill="none" stroke="var(--pri)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"/>';
       pts.forEach(function (p) { g += '<circle cx="' + p.x + '" cy="' + p.y + '" r="4.5" fill="var(--pri)" stroke="var(--gs)" stroke-width="2"/><text x="' + p.x + '" y="' + (p.y - 8) + '" text-anchor="middle" font-size="11" fill="var(--ink)">' + p.v + '</text>'; });
     }
-    return '<svg class="ch" viewBox="0 0 400 180" role="img" aria-label="График баллов">' + g + '</svg>';
+    return '<svg class="ch" viewBox="0 0 400 180" role="img" aria-label="График баллов">' + fill + g + '</svg>';
   }
 
   // ---------- карточка прогресса (ученик и учитель) ----------
@@ -419,7 +420,7 @@
   };
   if ($('regPrint')) $('regPrint').onclick = function () {
     var printWindow = window.open('', '_blank');
-    var cardsHtml = '<html><head><title>Ведомость карточек авторизации</title><style>body { font-family: Arial, sans-serif; padding: 20px; background: #F4F7F8; color: #0F172A; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; } .card { background: #FFFFFF; border: 2px dashed #D9E4E5; padding: 15px; border-radius: 8px; page-break-inside: avoid; } .title { color: #0F766E; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #D9E4E5; padding-bottom: 4px; } .field { margin: 4px 0; font-size: 14px; } .val { font-weight: bold; font-family: monospace; }</style></head><body><h2>Карточки авторизации обучающихся</h2><div class="grid">';
+    var cardsHtml = '<html><head><title>Ведомость карточек авторизации</title><style>body { font-family: Arial, sans-serif; padding: 20px; background: #F6F7FB; color: #111827; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; } .card { background: #FFFFFF; border: 2px dashed #E5E7EB; padding: 15px; border-radius: 8px; page-break-inside: avoid; } .title { color: #4F46E5; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #E5E7EB; padding-bottom: 4px; } .field { margin: 4px 0; font-size: 14px; } .val { font-weight: bold; font-family: monospace; }</style></head><body><h2>Карточки авторизации обучающихся</h2><div class="grid">';
     D.students.forEach(function (s) {
       cardsHtml += '<div class="card"><div class="title">🎯 ЕНТ Трекер | Карточка авторизации</div><div class="field">Обучающийся: <span class="val">' + esc(s.name) + '</span> (' + esc(s.cls || '—') + ')</div><div class="field">Адрес системы: <span class="val">ent-tracker.onrender.com</span></div><div class="field">Логин: <span class="val">' + esc(s.login || '—') + '</span></div><div class="field">Пароль: <span class="val">Ваш пароль</span></div></div>';
     });

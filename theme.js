@@ -5,7 +5,7 @@
   function set(t,save){
     R.setAttribute('data-theme',t);
     var m=document.querySelector('meta[name="theme-color"]');
-    if(m)m.setAttribute('content',t==='night'?'#071A1D':'#F4F7F8');
+    if(m)m.setAttribute('content',t==='night'?'#0B0F19':'#F6F7FB');
     var b=document.getElementById('theme');
     if(b)b.textContent=t==='night'?'Дневная тема':'Ночная тема';
     if(save){try{localStorage.setItem(K,t)}catch(e){}}
