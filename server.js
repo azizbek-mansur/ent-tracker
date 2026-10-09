@@ -7,6 +7,8 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 
+if (fs.existsSync(path.join(__dirname, '.env'))) require('dotenv').config();
+
 const PORT = process.env.PORT || 3000;
 const TEACHER_CODE = process.env.TEACHER_CODE || '';
 const SECRET = process.env.JWT_SECRET;
