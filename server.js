@@ -110,6 +110,7 @@ function needTeacher(req, res, next) {
 }
 const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
 const int = (v, min, max) => { const n = Number(v); return Number.isInteger(n) && n >= min && n <= max ? n : null; };
+const isCreative = student => [student.p1, student.p2].some(subject => String(subject || '').toLowerCase().includes('творч'));
 async function threshold() {
   const result = await db.query("select value from settings where key='threshold'");
   return result.rows[0] ? Number(result.rows[0].value) : 50;
@@ -221,10 +222,12 @@ app.put('/api/sessions/:id/results', needAuth, needTeacher, asyncRoute(async (re
   const clean = [];
   for (const r of rows) {
     const uid = Number(r.studentId);
-    const student = await db.query("select id,name from users where id=$1 and role='student'", [uid]);
+    const student = await db.query("select id,name,p1,p2 from users where id=$1 and role='student'", [uid]);
     if (!student.rowCount) continue;
     if (r.blank) { clean.push({ uid, blank: true }); continue; }
-    const h = int(r.h, 0, 20), m = int(r.m, 0, 10), rr = int(r.r, 0, 10), a = int(r.a, 0, 50), b = int(r.b, 0, 50);
+    const creative = isCreative(student.rows[0]);
+    const h = int(r.h, 0, 20), m = int(r.m, 0, 10), rr = int(r.r, 0, 10);
+    const a = creative ? 0 : int(r.a, 0, 50), b = creative ? 0 : int(r.b, 0, 50);
     if ([h, m, rr, a, b].includes(null)) {
       return res.status(400).json({ error: `${student.rows[0].name}: проверьте баллы (история 0–20, грамотности 0–10, профильные 0–50)` });
     }
