@@ -286,7 +286,7 @@
       var p2Title = esc(s.p2 || 'Профиль 2');
 
       function inp(k, mx, dis, title) {
-        if (dis) return '<td><input type="text" value="—" disabled title="Творческое направление" style="background:#eee; text-align:center; color:#999;"></td>';
+        if (dis) return '<td><input type="text" value="—" disabled title="Творческое направление"></td>';
         return '<td><input type="number" min="0" max="' + mx + '" data-k="' + k + '" aria-label="' + title + ', ' + esc(s.name) + '" placeholder="' + title + '" value="' + (r ? r[k] : '') + '"></td>';
       }
       return '<tr data-sid="' + s.id + '"><td class="nm">' + esc(s.name) + (creative ? ' 🎨' : '') + ' <small class="mute" style="display:block; font-size:11px;">' + esc(s.cls) + ' | ' + (creative ? 'Творческий' : (p1Title + ', ' + p2Title)) + '</small></td>' + inp('h', 20, false, 'История') + inp('m', 10, false, 'Мат. грамотность') + inp('r', 10, false, 'Грамотность чтения') + inp('a', 50, creative, p1Title) + inp('b', 50, creative, p2Title) + '<td class="tt"><b>' + (r ? tot(r) : '') + '</b></td></tr>';
@@ -387,7 +387,7 @@
     if (!d) return;
     var tbody = $('regTbl');
     tbody.innerHTML = D.students.map(function (s) {
-      return '<tr><td>' + s.id + '</td><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.cls || '—') + '</td><td style="font-family:monospace; color:var(--pri);">' + esc(s.login || '—') + '</td><td style="text-align:center;"><button data-reset-pass="' + s.id + '" style="padding:4px 8px; font-size:12px; background:var(--bad); color:#fff; border:none; border-radius:4px; cursor:pointer;">Сбросить пароль</button></td></tr>';
+      return '<tr><td>' + s.id + '</td><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.cls || '—') + '</td><td style="font-family:monospace; color:var(--pri);">' + esc(s.login || '—') + '</td><td style="text-align:center;"><button data-reset-pass="' + s.id + '" style="padding:4px 8px; font-size:12px; background:var(--bad); color:var(--bad-ink); border:none; border-radius:4px; cursor:pointer;">Сбросить пароль</button></td></tr>';
     }).join('');
     d.showModal();
   }
@@ -419,7 +419,7 @@
   };
   if ($('regPrint')) $('regPrint').onclick = function () {
     var printWindow = window.open('', '_blank');
-    var cardsHtml = '<html><head><title>Ведомость карточек авторизации</title><style>body { font-family: Arial, sans-serif; padding: 20px; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; } .card { border: 2px dashed #333; padding: 15px; border-radius: 8px; page-break-inside: avoid; } .title { font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 4px; } .field { margin: 4px 0; font-size: 14px; } .val { font-weight: bold; font-family: monospace; }</style></head><body><h2>Карточки авторизации обучающихся</h2><div class="grid">';
+    var cardsHtml = '<html><head><title>Ведомость карточек авторизации</title><style>body { font-family: Arial, sans-serif; padding: 20px; background: #F4F7F8; color: #0F172A; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; } .card { background: #FFFFFF; border: 2px dashed #D9E4E5; padding: 15px; border-radius: 8px; page-break-inside: avoid; } .title { color: #0F766E; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #D9E4E5; padding-bottom: 4px; } .field { margin: 4px 0; font-size: 14px; } .val { font-weight: bold; font-family: monospace; }</style></head><body><h2>Карточки авторизации обучающихся</h2><div class="grid">';
     D.students.forEach(function (s) {
       cardsHtml += '<div class="card"><div class="title">🎯 ЕНТ Трекер | Карточка авторизации</div><div class="field">Обучающийся: <span class="val">' + esc(s.name) + '</span> (' + esc(s.cls || '—') + ')</div><div class="field">Адрес системы: <span class="val">ent-tracker.onrender.com</span></div><div class="field">Логин: <span class="val">' + esc(s.login || '—') + '</span></div><div class="field">Пароль: <span class="val">Ваш пароль</span></div></div>';
     });
